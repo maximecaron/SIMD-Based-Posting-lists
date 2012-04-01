@@ -1,0 +1,4 @@
+Inverted index compression algorithm using SIMD instruction __builtin_ia32_pshufb128 
+Based on   http://www.stepanovpapers.com/CIKM_2011.pdf 
+
+to compile use g++ -O2 -mssse3 main.cpp
