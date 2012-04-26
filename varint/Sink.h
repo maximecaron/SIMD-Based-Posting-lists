@@ -1,0 +1,87 @@
+// A Sink is an interface that consumes a sequence of bytes.
+class Sink {
+private:
+    //buffer's starting address
+	char* dest_;
+    //buffer total size
+	size_t size_;
+public:
+	//helper variable
+    char* currBytePtr;
+	char* limit_;
+	unsigned int numBytesWritten;
+	
+	
+	Sink(size_t size){
+		dest_ = new char[size];
+	    size_ = size;
+				
+		currBytePtr = dest_;
+		limit_ = dest_ + size;
+		numBytesWritten = 0;
+	}
+	
+	template<size_t size>
+	Sink(char (&a)[size]) : dest_(&a[0]), limit_(&a[0] + size){
+		currBytePtr = 	dest_;
+		numBytesWritten = 0;
+		size_ = size;
+	}
+	
+	Sink(char* dest,size_t size) : dest_(dest) ,limit_(dest+size) {
+		currBytePtr = 	dest_;
+		numBytesWritten = 0;
+		size_ = size;
+	}
+	
+   void resetBuffer(){
+	 currBytePtr=dest_;
+	 numBytesWritten=0;	
+   }
+	
+	
+	// Append "bytes[0,n-1]" to this
+	bool Append(const char* data, size_t n) {
+	  const size_t space_left = limit_ - currBytePtr;	
+	  if ( space_left < n){
+		return false;
+	  }
+	  if (data != currBytePtr) {
+	    memcpy(currBytePtr, data, n);
+	  }
+	  currBytePtr += n;
+	  numBytesWritten +=n;
+	  return true;
+	}
+	
+	// Returns a writable buffer of the specified length for appending.
+	// May return a pointer to the caller-owned scratch buffer which
+	// must have at least the indicated length.  The returned buffer is
+	// only valid until the next operation on this Sink
+	//
+	// After writing at most "length" bytes, call Append() with the
+	// pointer returned from this function and the number of bytes
+	// written. Many Append() implementations will avoid copying
+	// bytes if this function returned an internal buffer.
+	char* GetAppendBuffer(size_t length, char* scratch) {
+	  const size_t space_left = limit_ - currBytePtr;
+	  if (space_left < length) {
+		return 	scratch;
+	  }
+	  return currBytePtr;
+	}
+	
+   // Return the current output pointer so that a caller can see how
+   // many bytes were produced. 
+   char* CurrentDestination() const { return currBytePtr; }
+
+   void flush(){
+	
+   }
+//optionnal trait
+   int getNumBytesWritten(){
+	return numBytesWritten;
+   }
+
+
+};
