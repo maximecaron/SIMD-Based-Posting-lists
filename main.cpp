@@ -5,10 +5,7 @@ using namespace std;
 #include <iostream>
 #include <stdio.h>
 #include <assert.h>
-#include <xmmintrin.h>
-#include "varint/Sink.h"
-#include "varint/Source.h"
-#include "varint/Codec.h"
+
 #include "varint/CompressedSet.h"
 
 int main() {

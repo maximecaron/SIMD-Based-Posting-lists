@@ -54,9 +54,6 @@ public:
 	  if ((len + sizeOfCurrentNoCompBlock) <= blocksize_) {
 		memcpy( &currentNoCompBlock[sizeOfCurrentNoCompBlock],&docids[start], len*4 );
 		sizeOfCurrentNoCompBlock += len;
-		for( int i = 0; i<sizeOfCurrentNoCompBlock; i++){
-			printf("currentNoCompBlock[%d]=%X\n",i,currentNoCompBlock[i]);	
-		}
 	  } else {
 		printf("addDocs else block \n");	
 		
@@ -152,8 +149,6 @@ public:
 
   CompressedDeltaChunk PForDeltaCompressOneBlock(unsigned int* block,size_t blocksize){
 	size_t compressedBlockSize = codec.compressed_length(block,blocksize);
-	printf("PForDeltaCompressOneBlock blocksize=%d\n",(int)blocksize);
-	printf("PForDeltaCompressOneBlock compressedBlockSize=%d\n",(int)compressedBlockSize);	
 	CompressedDeltaChunk compblock(compressedBlockSize);
 	Source src(block,blocksize);
 	Sink dst = compblock.getSink();

@@ -1,6 +1,8 @@
 #ifndef CODEC_H__
 #define CODEC_H__
 #include "Common.h"
+#include "Source.h"
+#include "Sink.h"
 class Codec{
 private:
 	int    maskOutputSize[256];
