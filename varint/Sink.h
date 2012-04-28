@@ -1,4 +1,10 @@
 // A Sink is an interface that consumes a sequence of bytes.
+#ifndef SINK_H__
+#define SINK_H__
+
+#include <iostream>
+#include <stdio.h>
+
 class Sink {
 private:
     //buffer's starting address
@@ -10,16 +16,6 @@ public:
     char* currBytePtr;
 	char* limit_;
 	unsigned int numBytesWritten;
-	
-	
-	Sink(size_t size){
-		dest_ = new char[size];
-	    size_ = size;
-				
-		currBytePtr = dest_;
-		limit_ = dest_ + size;
-		numBytesWritten = 0;
-	}
 	
 	template<size_t size>
 	Sink(char (&a)[size]) : dest_(&a[0]), limit_(&a[0] + size){
@@ -85,3 +81,4 @@ public:
 
 
 };
+#endif  // SINK_H__

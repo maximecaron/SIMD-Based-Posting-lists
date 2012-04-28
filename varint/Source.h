@@ -1,5 +1,9 @@
 // http://code.google.com/p/protobuf/source/browse/trunk/src/google/protobuf/io/zero_copy_stream_impl_lite.h
 // http://code.google.com/p/protobuf/source/browse/trunk/src/google/protobuf/io/zero_copy_stream_impl_lite.cc
+
+#ifndef  SOURCE_H__
+#define  SOURCE_H__
+
 #include "Common.h"
 static const int kDefaultBlockSize = 8192;
 // A Source is an interface that yields a sequence of bytes
@@ -78,3 +82,5 @@ public:
 	  return true;
     }
 };
+
+#endif  SOURCE_H__

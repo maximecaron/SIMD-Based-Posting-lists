@@ -1,3 +1,5 @@
+#ifndef CODEC_H__
+#define CODEC_H__
 #include "Common.h"
 class Codec{
 private:
@@ -195,12 +197,18 @@ private:
     	return readSize;
     }
 
-    int Uncompress(Source& src, Sink sink){
+    int Uncompress(Source src, Sink sink){
 	   size_t uncompressSize = 0;
 	   while (src.Available() > 0){
 	     uncompressSize += decodeBlock(src,sink);
 	   }
 	   return uncompressSize;
+    }
+
+
+    size_t Uncompress(Source src, unsigned int* dst,size_t size){
+	   Sink decodeDst((char*)dst,sizeof(*dst)*size);
+	   return Uncompress(src,decodeDst);
     }
 
     /**
@@ -212,6 +220,8 @@ private:
        Sink decodeDst((char*)dst,sizeof(*dst)*dstSize);
 	   return Uncompress(decodeSrc,decodeDst);
     }
+
+
 
 
 	size_t block_compressed_length(Source& src){
@@ -251,7 +261,7 @@ private:
 	/**
 	 * return length of uncompressed output.
 	 */
-	size_t uncompressed_length(Source& src){
+	size_t uncompressed_length(Source src){
 		size_t size = 0;
 		size_t avail = 0;
 		const char*  desc = (char*)src.Peek(&avail);
@@ -288,3 +298,5 @@ private:
 	   return (lastId == target);
 	}
 };
+
+#endif  // CODEC_H__
