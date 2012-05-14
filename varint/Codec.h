@@ -3,6 +3,9 @@
 #include "Common.h"
 #include "Source.h"
 #include "Sink.h"
+#include <iostream>
+#include <stdio.h>
+#include <emmintrin.h>
 class Codec{
 private:
 	int    maskOutputSize[256];
@@ -52,6 +55,7 @@ private:
 			mask[desc][i]= -1;
 		}
 	  }	
+	
 	}
 
 	int getNumByteNeeded(unsigned int value){
@@ -199,7 +203,7 @@ private:
     	return readSize;
     }
 
-    int Uncompress(Source src, Sink sink){
+    int Uncompress(Source& src, Sink& sink){
 	   size_t uncompressSize = 0;
 	   while (src.Available() > 0){
 	     uncompressSize += decodeBlock(src,sink);
@@ -208,7 +212,7 @@ private:
     }
 
 
-    size_t Uncompress(Source src, unsigned int* dst,size_t size){
+    size_t Uncompress(Source& src, unsigned int* dst,size_t size){
 	   Sink decodeDst((char*)dst,sizeof(*dst)*size);
 	   return Uncompress(src,decodeDst);
     }

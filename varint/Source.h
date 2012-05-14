@@ -12,14 +12,12 @@ class Source {
 private:
 	  const  uint8* ptr_;
 	  size_t left_;
-	  size_t bytecount_;
 	  size_t block_size_;
 public:
 	template<typename A, size_t size>
 	Source(A (&a)[size]){
 		ptr_ = (uint8_t*)&a[0];
 		left_ = sizeof(A) * size;
-		bytecount_ = 0;
 		block_size_ = left_;
     }
 
@@ -28,18 +26,13 @@ public:
     template<typename A>
     Source(const A* p, size_t n,size_t block_size = -1) : 
          ptr_((uint8_t*)p),
-         left_(sizeof(*p) * n),
-         bytecount_(0) {
+         left_(sizeof(*p) * n){
 			block_size_ = block_size > 0 ? block_size : left_;
 	}
 
-    // Returns the total number of bytes read since this object was created.
-    size_t ByteCount(){
-		return bytecount_;
-    }
-
+  
     // Return the number of bytes left to read from the source
-	size_t Available() const {
+	inline size_t Available() const {
 		return left_;
 	}
 	
@@ -73,12 +66,10 @@ public:
     // Returns false if the end of the stream is reached or some input error occurred.
     // In the end-of-stream case, the stream is advanced to the end of the stream
     // (so ByteCount() will return the total size of the stream).
-    bool Skip(size_t count){
+    inline bool Skip(size_t count){
 	  //if (count > left_) return false;
-
 	  left_ -= count;
 	  ptr_ += count;
-	  bytecount_ += count;
 	  return true;
     }
 };

@@ -7,21 +7,31 @@
 class CompressedDeltaChunk {
 	size_t compressedSize_;
 	vector<uint8> data_;
+//	Source* src;
 public:
 	CompressedDeltaChunk(){
-		compressedSize_ = 0;	
+		compressedSize_ = 0;
+	//	src = NULL; 	
+	}
+	CompressedDeltaChunk(const CompressedDeltaChunk& other){
+		compressedSize_ = 0;
+	//	src = new Source((char*)&(data_[0]),compressedSize_); 	
 	}
 	CompressedDeltaChunk(size_t compressedSize):data_(compressedSize){
-		compressedSize_ = compressedSize;	
+		compressedSize_ = compressedSize;
+	//	src = new Source((char*)&(data_[0]),compressedSize_);
 	}
 	CompressedDeltaChunk(vector<uint8> data,size_t compressedSize){
 		compressedSize_ = compressedSize;
-		data_ = data;	
+		data_ = data;
+	//	src = new Source((char*)&(data_[0]),compressedSize_);
+	}
+	~CompressedDeltaChunk(){
+	//	if ( src !=NULL){
+	//	  delete src;
+	//	}
 	}
 
-	vector<uint8> getCompressedBlock(){
-		return data_;	
-	}
 	size_t getCompressedSize(){
 		return compressedSize_;
 	}
@@ -30,7 +40,8 @@ public:
 		return Sink((char*)&(data_[0]),compressedSize_);
 	}
 	
-	Source getSource(){
+    Source getSource(){
+		//return *src;
 		return Source((char*)&(data_[0]),compressedSize_);
 	}
 	
