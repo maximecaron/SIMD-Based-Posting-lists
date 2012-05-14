@@ -13,10 +13,7 @@ public:
 		compressedSize_ = 0;
 	//	src = NULL; 	
 	}
-	CompressedDeltaChunk(const CompressedDeltaChunk& other){
-		compressedSize_ = 0;
-	//	src = new Source((char*)&(data_[0]),compressedSize_); 	
-	}
+
 	CompressedDeltaChunk(size_t compressedSize):data_(compressedSize){
 		compressedSize_ = compressedSize;
 	//	src = new Source((char*)&(data_[0]),compressedSize_);
