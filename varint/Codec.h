@@ -81,6 +81,11 @@ private:
 		init();	
 	}
 	
+	Codec(const Codec& other){
+		scratch_output = new char[32];
+		init();	
+	}
+	
 	~Codec(){
 		delete[] scratch_output;
 	    for (int desc =0;desc<=255;desc++ ){
@@ -160,9 +165,15 @@ private:
        Sink encodeDst((char*)dst,sizeof(*dst)*dstSize);
 	   return Compress(encodeSrc,encodeDst);
     }
+/*
+    v16qi getLowMask(){
+	
+    }
 
-
-
+    v16qi getHighMask(){
+	
+    }
+*/
     /**
      * src : a compressed buffer
      * dst : a buffer for uncompressed data of size uncompressed_length(src)
@@ -293,15 +304,13 @@ private:
 	   if (lastId == target) return true;
 
 	   // searching while doing prefix sum (to get docIds instead of d-gaps)
-	   for(idx = 1; idx<size; ++idx)
-	   {
+	   
+	   for(idx = 1; idx<size; ++idx){
 	     lastId += (array[idx]+1);
 	     if (lastId >= target)
-	       break;
+			return (lastId == target);
 	   }
-	   if(idx == size)
-	     return false;
-	   return (lastId == target);
+       return false;
 	}
 };
 

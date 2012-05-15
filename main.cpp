@@ -1,22 +1,40 @@
 // from  http://www.stepanovpapers.com/CIKM_2011.pdf 
-// compile with g++ -O2 -mssse3 main.cpp  -o result.bin
+// compile with g++  -O3 -mssse3 main.cpp  -o result.bin
 using namespace std;
 
 #include <iostream>
 #include <stdio.h>
 #include <assert.h>
-
 #include "varint/CompressedSet.h"
+#include <time.h>
+#include "varint/LazyAndSet.h"
+
+double diffclock(clock_t clock1,clock_t clock2)
+{
+	double diffticks=clock1-clock2;
+	double diffms=(diffticks*1000)/CLOCKS_PER_SEC;
+	return diffms;
+}
+
+void benchmark(){
+		CompressedSet myset1;
+		for (unsigned int i = 0; i<=15000000; ++i){
+		  myset1.addDoc(i);	
+		}
+		clock_t begin=clock();
+		// sequential scanning 150 000 000 doc per seconds
+	    SetIterator it  = myset1.iterator();
+	    while (it.nextDoc() != NO_MORE_DOCS){
+	     	//unsigned int temp = it.docID();
+	     	//myset1.find(temp);
+		} 
+		clock_t end=clock();
+        std::cout << "iteration Time: " << double(diffclock(end,begin)) << " ms"<< endl;
+}
+
+
 
 int main() {
-	unsigned int encodeSrcBuffer[] = {0x00,0xFFF,0xC4,0xC5,0xC6,0xC7,0xC8,0xC9,0xD1,0xD2,0xD4,0xD5,0xD6,0xD7,0xD8,0xD9}; 
-	CompressedSet set;
-	set.addDocs(encodeSrcBuffer,0,16);
-	
-
-	for(SetIterator it  = set.iterator(); it.docID() != NO_MORE_DOCS; it.nextDoc()){
-		printf("%X\n",it.docID());	
-	}
-
-    printf("Done\n");
+	benchmark();
 }
+

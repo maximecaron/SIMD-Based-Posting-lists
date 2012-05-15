@@ -1,25 +1,34 @@
 #ifndef  DELTA_CHUNK_STORE_H__
 #define  DELTA_CHUNK_STORE_H__
 #include <vector>
+#include <iostream>
+#include <tr1/unordered_map>
+
 #include "CompressedDeltaChunk.h"
+using namespace std::tr1;
 class DeltaChunkStore {
-  vector<CompressedDeltaChunk> data;
-public: 
+  unordered_map<int,CompressedDeltaChunk> data2;
+  int currentIndex;
+public:  
+  DeltaChunkStore(){
+	currentIndex = -1;
+  }
+
   void add(CompressedDeltaChunk val) {
-	data.push_back(val);
+	currentIndex++;
+	data2[currentIndex] = val;
   }
 
   void set(CompressedDeltaChunk val,int index) {
-	data.resize(index+1);
-	data[index] = val;
+	data2[index] = val;
   }
 
-  CompressedDeltaChunk get(int index) {
-	return data[index];
+  CompressedDeltaChunk& get(int index) {
+	return data2[index];
   }
 
   size_t size() {
-	return data.size();
+    return	currentIndex+1;
   }
 
 };
