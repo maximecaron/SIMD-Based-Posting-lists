@@ -22,7 +22,7 @@ void benchmark(){
 		  myset1.addDoc(i);	
 		}
 		clock_t begin=clock();
-		// sequential scanning 150 000 000 doc per seconds
+		// sequential scanning 150 000 000 docs per second
 		for (SetIterator it = myset1.iterator(); it.docID() != NO_MORE_DOCS;it.nextDoc()){
 			unsigned int temp = it.docID();
 		}
