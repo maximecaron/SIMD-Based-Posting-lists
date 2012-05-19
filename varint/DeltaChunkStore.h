@@ -23,11 +23,11 @@ public:
 	data2[index] = val;
   }
 
-  CompressedDeltaChunk& get(int index) {
-	return data2[index];
+  const CompressedDeltaChunk& get(int index) const  {
+	return data2.find(index)->second;
   }
 
-  size_t size() {
+  size_t size() const {
     return	currentIndex+1;
   }
 

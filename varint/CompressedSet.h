@@ -27,12 +27,12 @@ class SetIterator{
 	unsigned int*  iterDecompBlock; // temporary storage for the decompressed data
 	Codec codec; // varint encoding codec
 	//parent
-	CompressedSet& set;
+    const CompressedSet& set;
 	size_t blocksize_;
 	int BLOCK_INDEX_SHIFT_BITS; // floor(log(blockSize))
 
 public:
-	SetIterator(CompressedSet& parentSet);
+	SetIterator(const CompressedSet* parentSet);
 	~SetIterator();
 	int docID();
 	int getBlockIndex(int docIdIndex);\
@@ -83,7 +83,9 @@ public:
     }
 
     SetIterator iterator() {
-       return SetIterator(*this);
+	   SetIterator it(this);
+       it.nextDoc();
+       return it;
     }
 
     void addDocs(unsigned int docids[],size_t start,size_t len){
@@ -316,8 +318,7 @@ public:
     }
 
     //This method will not work after a call to flush()
-	inline bool find(unsigned int target)
-	  { 
+	inline bool find(unsigned int target)  { 
 	    //unsigned int lastId = lastAdded;
 		if(PREDICT_FALSE(totalDocIdNum==0))
 		      return false;
@@ -366,7 +367,7 @@ public:
 
 };
 
-    SetIterator::SetIterator(CompressedSet& parentSet) : set(parentSet){
+    SetIterator::SetIterator(const CompressedSet* const parentSet) : set(*parentSet){
         compBlockNum = set.sequenceOfCompBlocks.size();
 		cursor = -1;
 		int i=-1;

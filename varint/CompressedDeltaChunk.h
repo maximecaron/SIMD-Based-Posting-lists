@@ -37,7 +37,7 @@ public:
 		return Sink((char*)&(data_[0]),compressedSize_);
 	}
 	
-    Source getSource(){
+    Source getSource() const {
 		//return *src;
 		return Source((char*)&(data_[0]),compressedSize_);
 	}
