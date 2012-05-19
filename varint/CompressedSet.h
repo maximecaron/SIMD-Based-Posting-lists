@@ -18,29 +18,32 @@
 #include <vector>
 const int NO_MORE_DOCS = std::numeric_limits<int>::max();
 class CompressedSet;
-class SetIterator{
-	int cursor; // the current pointer of the input 
-    unsigned int totalDocIdNum;
-    int lastAccessedDocId; 
-	
-	int compBlockNum; // the number of compressed blocks
-	unsigned int*  iterDecompBlock; // temporary storage for the decompressed data
-	Codec codec; // varint encoding codec
-	//parent
-    const CompressedSet& set;
-	size_t blocksize_;
-	int BLOCK_INDEX_SHIFT_BITS; // floor(log(blockSize))
 
-public:
-	SetIterator(const CompressedSet* parentSet);
-	~SetIterator();
-	int docID();
-	int getBlockIndex(int docIdIndex);\
-	int nextDoc();
-};
 
 
 class CompressedSet {
+public:
+	class Iterator{
+		int cursor; // the current pointer of the input 
+	    unsigned int totalDocIdNum;
+	    int lastAccessedDocId; 
+
+		int compBlockNum; // the number of compressed blocks
+		unsigned int*  iterDecompBlock; // temporary storage for the decompressed data
+		Codec codec; // varint encoding codec
+		//parent
+	    const CompressedSet& set;
+		size_t blocksize_;
+		int BLOCK_INDEX_SHIFT_BITS; // floor(log(blockSize))
+
+	public:
+		Iterator(const CompressedSet* parentSet);
+		~Iterator();
+		int docID();
+		int getBlockIndex(int docIdIndex);\
+		int nextDoc();
+	};
+private:	
 	unsigned sizeOfCurrentNoCompBlock; // the number of uncompressed elements that is hold in the currentNoCompBlock
 	Codec codec; // varint encoding codec    
 	unsigned int lastAdded; // recently inserted/accessed element	
@@ -82,8 +85,8 @@ public:
 	    delete[] myDecompBlock;
     }
 
-    SetIterator iterator() {
-	   SetIterator it(this);
+    CompressedSet::Iterator iterator() {
+	   CompressedSet::Iterator it(this);
        it.nextDoc();
        return it;
     }
@@ -367,7 +370,7 @@ public:
 
 };
 
-    SetIterator::SetIterator(const CompressedSet* const parentSet) : set(*parentSet){
+   CompressedSet::Iterator::Iterator(const CompressedSet* const parentSet) : set(*parentSet){
         compBlockNum = set.sequenceOfCompBlocks.size();
 		cursor = -1;
 		int i=-1;
@@ -384,11 +387,11 @@ public:
 		}
     }
 
-   SetIterator::~SetIterator(){
+   CompressedSet::Iterator::~Iterator(){
 	   delete[] iterDecompBlock;
    }
 
-    int SetIterator::docID(){
+    int CompressedSet::Iterator::docID(){
 		return lastAccessedDocId;
     }
     /**
@@ -397,11 +400,11 @@ public:
      * @param index
      * @return
      */
-    int SetIterator::getBlockIndex(int docIdIndex) {
+    int CompressedSet::Iterator::getBlockIndex(int docIdIndex) {
       return docIdIndex >> BLOCK_INDEX_SHIFT_BITS;
     }
 
-    int SetIterator::nextDoc(){
+    int CompressedSet::Iterator::nextDoc(){
 	    //: if the pointer points to the end
 	    if(++cursor == totalDocIdNum) { 
           lastAccessedDocId = NO_MORE_DOCS;
