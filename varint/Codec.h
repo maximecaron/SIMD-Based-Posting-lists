@@ -179,20 +179,21 @@ private:
      * dst : a buffer for uncompressed data of size uncompressed_length(src)
      */
     int decodeBlock(Source& src,Sink& dst){
-//		static char buff[16];
+		static char buff[16];
 		size_t n;
 		const char*  pdesc = (char*)src.Peek(&n);
     	unsigned char desc = *pdesc;
         src.Skip(1);
     	
 		const char* peek = (char*)src.Peek(&n);
-//		if (n >= 16){
+		v16qi data;
+		if (n >= 16){
 		  // read 16 byte of data even if we only need 8
-		  v16qi data = __builtin_ia32_lddqu(peek);
-//		} else {
-//		  memcpy(buff,peek,8);
-//		  data = __builtin_ia32_lddqu(buff);
-//		}
+		  data = __builtin_ia32_lddqu(peek);
+		} else {
+		  memcpy(buff,peek,8);
+		  data = __builtin_ia32_lddqu(buff);
+		}
 		
     	// load de required mask
     	v16qi shf   = __builtin_ia32_lddqu(mask[desc]);

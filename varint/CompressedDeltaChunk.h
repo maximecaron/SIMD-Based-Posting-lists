@@ -5,28 +5,28 @@
 #include "Sink.h"
 #include "Source.h"
 class CompressedDeltaChunk {
+private:
 	size_t compressedSize_;
-	vector<uint8> data_;
-//	Source* src;
-public:
-	CompressedDeltaChunk(){
-		compressedSize_ = 0;
-	//	src = NULL; 	
+	uint8* data_;
+	
+	//disable copy constructor
+	CompressedDeltaChunk(const CompressedDeltaChunk& other);
+	CompressedDeltaChunk& operator=(const CompressedDeltaChunk& other);
+public:	
+    CompressedDeltaChunk(){
+    	compressedSize_ = 0;
+    	data_ = NULL; 	
+    }
+
+	CompressedDeltaChunk(size_t compressedSize){
+		compressedSize_ = compressedSize;
+		data_ = new uint8[compressedSize_];
 	}
 
-	CompressedDeltaChunk(size_t compressedSize):data_(compressedSize){
-		compressedSize_ = compressedSize;
-	//	src = new Source((char*)&(data_[0]),compressedSize_);
-	}
-	CompressedDeltaChunk(vector<uint8> data,size_t compressedSize){
-		compressedSize_ = compressedSize;
-		data_ = data;
-	//	src = new Source((char*)&(data_[0]),compressedSize_);
-	}
 	~CompressedDeltaChunk(){
-	//	if ( src !=NULL){
-	//	  delete src;
-	//	}
+		if ( data_ !=NULL){
+		  delete[] data_;
+		}
 	}
 
 	size_t getCompressedSize(){
@@ -38,7 +38,6 @@ public:
 	}
 	
     Source getSource() const {
-		//return *src;
 		return Source((char*)&(data_[0]),compressedSize_);
 	}
 	

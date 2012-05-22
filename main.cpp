@@ -7,7 +7,8 @@ using namespace std;
 #include <assert.h>
 #include "varint/CompressedSet.h"
 #include <time.h>
-
+#include "varint/LazyAndSet.h"
+#include <vector>
 double diffclock(clock_t clock1,clock_t clock2)
 {
 	double diffticks=clock1-clock2;
@@ -17,16 +18,19 @@ double diffclock(clock_t clock1,clock_t clock2)
 
 void benchmark(){
 		CompressedSet myset1;
-		for (unsigned int i = 0; i<=10; ++i){
+		for (unsigned int i = 0; i<=261000000; ++i){
 		  myset1.addDoc(i);	
 		}
+		
 		clock_t begin=clock();
-		// sequential scanning 150 000 000 docs per second
+		
+		// Sequential scanning 261 000 000 docs per second
 		for (CompressedSet::Iterator it = myset1.iterator(); it.docID() != NO_MORE_DOCS;it.nextDoc()){
 			unsigned int temp = it.docID();
 		}
+
 		clock_t end=clock();
-        std::cout << "iteration Time: " << double(diffclock(end,begin)) << " ms"<< endl;
+        std::cout << "Iteration Time: " << double(diffclock(end,begin)) << " ms"<< endl;
 }
 
 

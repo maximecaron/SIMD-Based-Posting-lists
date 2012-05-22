@@ -3,32 +3,34 @@
 #include <vector>
 #include <iostream>
 #include <tr1/unordered_map>
-
+#include <tr1/memory>
 #include "CompressedDeltaChunk.h"
 using namespace std::tr1;
 class DeltaChunkStore {
-  unordered_map<int,CompressedDeltaChunk> data2;
-  int currentIndex;
+  vector<shared_ptr<CompressedDeltaChunk> > data2;
 public:  
   DeltaChunkStore(){
-	currentIndex = -1;
   }
 
-  void add(CompressedDeltaChunk val) {
-	currentIndex++;
-	data2[currentIndex] = val;
+  shared_ptr<CompressedDeltaChunk> allocateBlock(size_t compressedSize){
+	shared_ptr<CompressedDeltaChunk> compblock(new CompressedDeltaChunk(compressedSize));
+	return compblock;
   }
 
-  void set(CompressedDeltaChunk val,int index) {
-	data2[index] = val;
+  void add(shared_ptr<CompressedDeltaChunk> val) {
+	data2.push_back(val);
   }
 
   const CompressedDeltaChunk& get(int index) const  {
-	return data2.find(index)->second;
+	return *data2[index];
+  }
+
+  void compact(){
+	data2.resize(data2.size());
   }
 
   size_t size() const {
-    return	currentIndex+1;
+    return	data2.size();
   }
 
 };
