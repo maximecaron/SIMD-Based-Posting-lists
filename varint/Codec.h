@@ -185,15 +185,15 @@ private:
     	unsigned char desc = *pdesc;
         src.Skip(1);
     	
-		const char* peek = (char*)src.Peek(&n);
-		v16qi data;
-		if (n >= 16){
-		  // read 16 byte of data even if we only need 8
-		  data = __builtin_ia32_lddqu(peek);
-		} else {
-		  memcpy(buff,peek,8);
-		  data = __builtin_ia32_lddqu(buff);
-		}
+	const char* peek = (char*)src.Peek(&n);
+	v16qi data;
+	// only read 16 byte if we need to to avoid cpu cache miss
+	if (n >= 16){
+            data = __builtin_ia32_lddqu(peek);
+	} else {
+	    memcpy(buff,peek,8);
+	    data = __builtin_ia32_lddqu(buff);
+	}
 		
     	// load de required mask
     	v16qi shf   = __builtin_ia32_lddqu(mask[desc]);
@@ -201,13 +201,12 @@ private:
     	v16qi result = __builtin_ia32_pshufb128(data,shf);
 
         char* dest = dst.GetAppendBuffer(32, scratch_output);
-
     	__builtin_ia32_storedqu (dest, result);
         int readSize = maskOutputSize[desc];
+        
         if ( readSize > 4) {
-          
-    	  v16qi result2 = __builtin_ia32_pshufb128(data,shf2);
-    	  __builtin_ia32_storedqu (dest + (16), result2);	
+    	    v16qi result2 = __builtin_ia32_pshufb128(data,shf2);
+    	    __builtin_ia32_storedqu (dest + (16), result2);	
     	}
     	// pop 8 input char
         src.Skip(8);
@@ -216,11 +215,11 @@ private:
     }
 
     int Uncompress(Source& src, Sink& sink){
-	   size_t uncompressSize = 0;
-	   while (src.Available() > 0){
-	     uncompressSize += decodeBlock(src,sink);
-	   }
-	   return uncompressSize;
+    	size_t uncompressSize = 0;
+	while (src.Available() > 0){
+	    uncompressSize += decodeBlock(src,sink);
+	}
+	return uncompressSize;
     }
 
 
