@@ -6,6 +6,8 @@
 #include <iostream>
 #include <stdio.h>
 #include <emmintrin.h>
+//precompute mask table into the code
+//https://github.com/facebook/folly/blob/master/folly/build/generate_varint_tables.py
 class Codec{
 private:
 	int    maskOutputSize[256];
@@ -113,6 +115,7 @@ private:
 			size_t n;
 			const unsigned int* temp = (unsigned int*)src.Peek(&n);
 			int byteNeeded = getNumByteNeeded(*temp);
+			
 			if (PREDICT_FALSE(length + byteNeeded > 8)){
 				break; 
 			}
@@ -145,6 +148,7 @@ private:
 			bitmask = bitmask << 1;
 		}
 		dst.Append(dest, written);
+		
 		return 9;
 	}
 	
@@ -165,20 +169,12 @@ private:
        Sink encodeDst((char*)dst,sizeof(*dst)*dstSize);
 	   return Compress(encodeSrc,encodeDst);
     }
-/*
-    v16qi getLowMask(){
-	
-    }
 
-    v16qi getHighMask(){
-	
-    }
-*/
     /**
      * src : a compressed buffer
      * dst : a buffer for uncompressed data of size uncompressed_length(src)
      */
-    int decodeBlock(Source& src,Sink& dst){
+    int decodeBlock(Source& src,Sink& dst) const {
 		static char buff[16];
 		size_t n;
 		const char*  pdesc = (char*)src.Peek(&n);
@@ -187,25 +183,24 @@ private:
     	
 		const char* peek = (char*)src.Peek(&n);
 		v16qi data;
-		if (n >= 16){
-		  // read 16 byte of data even if we only need 8
+		if (PREDICT_TRUE(n >= 16)){
+		  // read 16 byte of data only if we need
+		  // to avoid cache miss
 		  data = __builtin_ia32_lddqu(peek);
 		} else {
 		  memcpy(buff,peek,8);
 		  data = __builtin_ia32_lddqu(buff);
 		}
-		
+		//detail::groupVarintSSEMasks
     	// load de required mask
     	v16qi shf   = __builtin_ia32_lddqu(mask[desc]);
-        v16qi shf2   = __builtin_ia32_lddqu(mask[desc]+16);
     	v16qi result = __builtin_ia32_pshufb128(data,shf);
-
         char* dest = dst.GetAppendBuffer(32, scratch_output);
-
     	__builtin_ia32_storedqu (dest, result);
         int readSize = maskOutputSize[desc];
-        if ( readSize > 4) {
-          
+
+        if (PREDICT_TRUE( readSize > 4)) {
+	      v16qi shf2   = __builtin_ia32_lddqu(mask[desc]+16);
     	  v16qi result2 = __builtin_ia32_pshufb128(data,shf2);
     	  __builtin_ia32_storedqu (dest + (16), result2);	
     	}
@@ -215,16 +210,15 @@ private:
     	return readSize;
     }
 
-    int Uncompress(Source& src, Sink& sink){
+    int Uncompress(Source& src, Sink& sink) const {
 	   size_t uncompressSize = 0;
-	   while (src.Available() > 0){
+	   while (src.Available()){
 	     uncompressSize += decodeBlock(src,sink);
 	   }
 	   return uncompressSize;
     }
 
-
-    size_t Uncompress(Source& src, unsigned int* dst,size_t size){
+    size_t Uncompress(Source& src, unsigned int* dst,size_t size) const {
 	   Sink decodeDst((char*)dst,sizeof(*dst)*size);
 	   return Uncompress(src,decodeDst);
     }
@@ -239,11 +233,9 @@ private:
 	   return Uncompress(decodeSrc,decodeDst);
     }
 
-
-
-
 	size_t block_compressed_length(Source& src){
 		int length = 0;
+		int count = 0;
 	    while (src.Available() > 0){
 			size_t n;
 			const unsigned int*  temp = (unsigned int*)src.Peek(&n);
@@ -253,19 +245,21 @@ private:
 			}
 			length += byteNeeded;
 			src.Skip(4);
+			count++;
 		}
 		return 9;	
 	}
 	
-	
-
 	/**
 	 * return length of compressed output.
 	 */
 	size_t compressed_length(Source& src){
+		int i = 0;
 		size_t compressed_size = 0;
-		while (src.Available() > 0){
-	      compressed_size += block_compressed_length(src);
+		while (src.Available()){
+			size_t temp = block_compressed_length(src);
+			compressed_size +=temp;
+			i++;
 		}
 		return compressed_size;	
 	}
@@ -305,7 +299,6 @@ private:
 	   if (lastId == target) return true;
 
 	   // searching while doing prefix sum (to get docIds instead of d-gaps)
-	   
 	   for(idx = 1; idx<size; ++idx){
 	     lastId += (array[idx]+1);
 	     if (lastId >= target)

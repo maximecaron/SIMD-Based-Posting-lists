@@ -1,5 +1,6 @@
 #ifndef COMMON_H__
 #define COMMON_H__
+#include <stdint.h>
 
 #ifdef HAVE_BUILTIN_EXPECT
 #define PREDICT_FALSE(x) (__builtin_expect(x, 0))

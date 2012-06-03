@@ -6,6 +6,7 @@
 #include <tr1/memory>
 #include "CompressedDeltaChunk.h"
 using namespace std::tr1;
+
 class DeltaChunkStore {
   vector<shared_ptr<CompressedDeltaChunk> > data2;
 public:  
@@ -33,5 +34,33 @@ public:
     return	data2.size();
   }
 
+  int getSerialIntNum() const {
+    int num = 1; // _len
+	for(int i=0; i<data2.size(); i++)
+    {
+        num += 1 + (*data2[i]).getCompressedSize(); // 1 is the int to record the length of the array
+    }
+    return num;
+  }
+
+  void write(ostream & out) const{
+	int size = data2.size();
+	out.write((char*)&size,4);
+
+	for(int i=0; i<data2.size(); i++)
+    {
+		(*data2[i]).write(out);
+    }
+  }
+
+  void read(istream & in){
+	int size = 0;
+	in.read((char*)&size,4);
+	data2.clear();
+	for(int i = 0; i<size; i++){
+	  shared_ptr<CompressedDeltaChunk> compblock(new CompressedDeltaChunk(in));
+	  data2.push_back(compblock);
+	}
+  }
 };
 #endif // DELTA_CHUNK_STORE_H__

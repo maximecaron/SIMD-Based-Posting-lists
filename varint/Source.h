@@ -24,7 +24,7 @@ public:
 
     // block_size define how many bytes to return at a time.
     template<typename A>
-    Source(const A* p, size_t n,size_t block_size = -1) : 
+    Source(const A* p, size_t n,size_t block_size = 0) : 
          ptr_((uint8_t*)p),
          left_(sizeof(*p) * n){
 			block_size_ = block_size > 0 ? block_size : left_;
@@ -40,7 +40,7 @@ public:
     // return a pointer and size to internal buffer instead of copying to caller buffer.
     // The returned region is valid until the next call to Skip()
     // The caller is responsible for ensuring that it only reads uptop bytes_in_buffer
-    const uint8* Peek(size_t* bytes_in_buffer){
+    inline const uint8* Peek(size_t* bytes_in_buffer){
 	  *bytes_in_buffer = left_;
 	  return ptr_;
     }
@@ -48,7 +48,7 @@ public:
     // Obtains a chunk of data from the stream.
     // If the returned value is false, there is no more data to return or an error occurred.
     // Otherwise, "size" points to the actual number of bytes read and "data" points to a pointer to a buffer containing these bytes.
-    bool Next(const void ** data,size_t * size){
+    inline bool Next(const void ** data,size_t * size){
 		if (!left_) return false;
 		
 		if (left_ <= block_size_){

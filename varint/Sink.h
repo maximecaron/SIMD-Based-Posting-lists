@@ -4,7 +4,9 @@
 
 #include <iostream>
 #include <stdio.h>
+#include <memory.h>
 
+using namespace std;
 class Sink {
 private:
     //buffer's starting address
@@ -42,7 +44,7 @@ public:
 	  if ( space_left < n){
 		return false;
 	  }
-	  if (data != currBytePtr) {
+	  if (PREDICT_FALSE(data != currBytePtr)) {
 	    memcpy(currBytePtr, data, n);
 	  }
 	  currBytePtr += n;

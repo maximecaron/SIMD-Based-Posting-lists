@@ -19,9 +19,17 @@ public:
     }
 
 	CompressedDeltaChunk(size_t compressedSize){
-		compressedSize_ = compressedSize;
+		compressedSize_ = compressedSize;	
 		data_ = new uint8[compressedSize_];
+		int datap = (unsigned long)data_;
 	}
+	
+	CompressedDeltaChunk(istream & in) :compressedSize_(0) {
+		in.read((char*)&compressedSize_,4);
+		data_ = new uint8[compressedSize_];
+		in.read((char*)data_,compressedSize_);
+	}
+
 
 	~CompressedDeltaChunk(){
 		if ( data_ !=NULL){
@@ -41,5 +49,10 @@ public:
 		return Source((char*)&(data_[0]),compressedSize_);
 	}
 	
-};
+	void write(ostream & out) const{
+		out.write((char*)&compressedSize_,4);
+		out.write((char*)data_,compressedSize_);
+	}
+
+}__attribute__ ((aligned (256)));
 #endif // COMPRESSED_DELTA_CHUNK_H__
