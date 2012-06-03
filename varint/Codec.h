@@ -180,7 +180,7 @@ private:
 		const char*  pdesc = (char*)src.Peek(&n);
     	unsigned char desc = *pdesc;
         src.Skip(1);
-    	
+
 		const char* peek = (char*)src.Peek(&n);
 		v16qi data;
 		if (PREDICT_TRUE(n >= 16)){
@@ -192,6 +192,7 @@ private:
 		  data = __builtin_ia32_lddqu(buff);
 		}
 		//detail::groupVarintSSEMasks
+
     	// load de required mask
     	v16qi shf   = __builtin_ia32_lddqu(mask[desc]);
     	v16qi result = __builtin_ia32_pshufb128(data,shf);
