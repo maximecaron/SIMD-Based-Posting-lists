@@ -6,8 +6,6 @@
 #include <iostream>
 #include <stdio.h>
 #include <emmintrin.h>
-//precompute mask table into the code
-//https://github.com/facebook/folly/blob/master/folly/build/generate_varint_tables.py
 class Codec{
 private:
 	int    maskOutputSize[256];
@@ -60,20 +58,10 @@ private:
 	
 	}
 
+    //Optimize this
 	int getNumByteNeeded(unsigned int value){
-		if (value > 0x000000FF ){
-		  if (value > 0x0000FFFF){
-			  if (value > 0x00FFFFFF){
-				return  4;
-			  } else {
-				return 3;
-			 }
-		  } else {
-			return 2;
-		  }
-		} else {
-		   return 1;	
-		}	
+		if (!value) return 1;
+		return (4-(__builtin_clz(value)/8));
 	}
  public:
 	Codec(){
@@ -95,7 +83,34 @@ private:
 	    }
 	}
 	
-
+	size_t block_compressed_length(Source& src){
+		int length = 0;
+		int numInt = 0;
+		int ithSize[8];
+	    while (src.Available() > 0){
+			size_t n;
+			const unsigned int*  temp = (unsigned int*)src.Peek(&n);
+			int byteNeeded = getNumByteNeeded(*temp);
+			if (PREDICT_FALSE(length + byteNeeded > 8)){
+				break; 
+			}
+			ithSize[numInt] = byteNeeded;
+			length += byteNeeded;
+			src.Skip(4);
+			numInt++;
+		}
+		int written = 0;
+		written++;
+		for (int i =0; i < numInt; i++){
+			int size = ithSize[i];
+			for (int j =0; j < size; j++){
+				written ++;
+			}
+		}
+		return 9;
+	}
+	
+	
 	
 	// input: 
 	//   src = stream of integer
@@ -116,7 +131,7 @@ private:
 			const unsigned int* temp = (unsigned int*)src.Peek(&n);
 			int byteNeeded = getNumByteNeeded(*temp);
 			
-			if (PREDICT_FALSE(length + byteNeeded > 8)){
+			if (PREDICT_FALSE((length + byteNeeded) > 8)){
 				break; 
 			}
 			
@@ -125,7 +140,7 @@ private:
 			desc = desc ^ bitmask;
 			bitmask = bitmask << 1;
 			
-			ithSize[numInt] = byteNeeded;
+			ithSize[numInt] = byteNeeded-1;
 			length += byteNeeded;
 			buffer[numInt] = *temp;
 			src.Skip(4);
@@ -133,33 +148,53 @@ private:
 		}
 		
 		char* dest = dst.GetAppendBuffer(9, scratch_output);
-		int written = 0;
-		dest[written] = desc;
-		written++;
+
+		
+		int written = 1;
 		for (int i =0; i < numInt; i++){
 			int size = ithSize[i];
 			unsigned int value = buffer[i];
-			for (int j = 0; j<size; j++){
-			    dest[written] = value >> (j*8);
+			for (int j = 0; j<=size; j++){
+				dest[written] = value;
+				value = value >> 8;
 				written++;
 			}
-			bitmask = bitmask << (ithSize[i]-1);
+			bitmask = bitmask << (ithSize[i]);
 			desc = desc ^ bitmask;
 			bitmask = bitmask << 1;
 		}
-		dst.Append(dest, written);
-		
+		dest[0] = desc;
+		dst.Append(dest, 9);
 		return 9;
 	}
 	
     size_t Compress(Source& src, Sink& sink){
 	   size_t compressed_size = 0;
-	   while (src.Available() > 0){
-	     compressed_size += encodeBlock(src,sink);
+	   while (src.Available() > 0 ){
+	     size_t temp  = encodeBlock(src,sink);
+		 compressed_size += temp;
 	   }
 	   return compressed_size;
     }
  
+	/**
+	 * return length of compressed output.
+	 */
+	size_t compressed_length(Source& src){
+		size_t compressed_size = 0;
+		while (src.Available() ){
+			size_t temp = block_compressed_length(src);
+			compressed_size +=temp;
+		}
+		return compressed_size;	
+	}
+	
+	template<typename srctype>
+	size_t compressed_length(srctype src,size_t srcSize){
+		Source encodeSrc(src,srcSize);
+		return compressed_length(encodeSrc);	
+	}
+	
     /**
      * @return the compressed size in bytes
      */
@@ -198,22 +233,22 @@ private:
     	v16qi result = __builtin_ia32_pshufb128(data,shf);
         char* dest = dst.GetAppendBuffer(32, scratch_output);
     	__builtin_ia32_storedqu (dest, result);
+        
         int readSize = maskOutputSize[desc];
-
         if (PREDICT_TRUE( readSize > 4)) {
 	      v16qi shf2   = __builtin_ia32_lddqu(mask[desc]+16);
     	  v16qi result2 = __builtin_ia32_pshufb128(data,shf2);
     	  __builtin_ia32_storedqu (dest + (16), result2);	
     	}
     	// pop 8 input char
-        src.Skip(8);
-        dst.Append(dest, readSize*4);
+		src.Skip(8);
+		dst.Append(dest, readSize*4);
     	return readSize;
     }
 
     int Uncompress(Source& src, Sink& sink) const {
 	   size_t uncompressSize = 0;
-	   while (src.Available()){
+	   while (src.Available() > 0){
 	     uncompressSize += decodeBlock(src,sink);
 	   }
 	   return uncompressSize;
@@ -234,42 +269,7 @@ private:
 	   return Uncompress(decodeSrc,decodeDst);
     }
 
-	size_t block_compressed_length(Source& src){
-		int length = 0;
-		int count = 0;
-	    while (src.Available() > 0){
-			size_t n;
-			const unsigned int*  temp = (unsigned int*)src.Peek(&n);
-			int byteNeeded = getNumByteNeeded(*temp);
-			if (PREDICT_FALSE(length + byteNeeded > 8)){
-				break; 
-			}
-			length += byteNeeded;
-			src.Skip(4);
-			count++;
-		}
-		return 9;	
-	}
-	
-	/**
-	 * return length of compressed output.
-	 */
-	size_t compressed_length(Source& src){
-		int i = 0;
-		size_t compressed_size = 0;
-		while (src.Available()){
-			size_t temp = block_compressed_length(src);
-			compressed_size +=temp;
-			i++;
-		}
-		return compressed_size;	
-	}
-	
-	template<typename srctype>
-	size_t compressed_length(srctype src,size_t srcSize){
-		Source encodeSrc(src,srcSize);
-		return compressed_length(encodeSrc);	
-	}
+
 	
 	/**
 	 * return length of uncompressed output.
@@ -282,7 +282,7 @@ private:
 			 size_t readSize = maskOutputSize[*desc];
 			 size +=  readSize;
 			 desc +=9;
-			 avail = avail - 9;
+			 avail -= 9;
 		}
 		return size;
 	}

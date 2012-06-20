@@ -14,6 +14,14 @@ private:
 	  size_t left_;
 	  size_t block_size_;
 public:
+	
+	Source(const Source& src){
+		ptr_ = src.ptr_;
+		left_ = src.left_;
+		block_size_ = src.block_size_;
+		
+	}
+	
 	template<typename A, size_t size>
 	Source(A (&a)[size]){
 		ptr_ = (uint8_t*)&a[0];

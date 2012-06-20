@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <limits>
 #include "Common.h"
+#include "Set.h"
 #include "Codec.h"
 #include "DeltaChunkStore.h"
 #include "CompressedDeltaChunk.h"
@@ -25,11 +26,9 @@ using namespace std::tr1;
 const int NO_MORE_DOCS = std::numeric_limits<int>::max();
 class CompressedSet;
 
-
-
-class CompressedSet {
+class CompressedSet  {
 public:
-	class Iterator{
+	class Iterator {
 		int cursor; // the current pointer of the input 
 	    unsigned int totalDocIdNum;
 	    int lastAccessedDocId; 
@@ -45,9 +44,11 @@ public:
 		Iterator(const CompressedSet::Iterator& other);
 		CompressedSet::Iterator& operator=(const CompressedSet::Iterator& rhs);
 		~Iterator();
-		int docID();
 		int getBlockIndex(int docIdIndex);
+		
+		int docID();
 		int nextDoc();
+		int Advance(int target);
 	};
 private:	
 	unsigned sizeOfCurrentNoCompBlock; // the number of uncompressed elements that is hold in the currentNoCompBlock
@@ -84,6 +85,7 @@ public:
 		//compressedByteSize = 0;
 		sizeOfCurrentNoCompBlock = 0;
 		totalDocIdNum = 0;
+		initSet();
 	}
 	
 	~CompressedSet(){
@@ -143,9 +145,6 @@ public:
     }
 
     void addDocs(unsigned int docids[],size_t start,size_t len){
-	  if (totalDocIdNum == 0) {
-		initSet();
-	  }
 	  if ((len + sizeOfCurrentNoCompBlock) <= DEFAULT_BATCH_SIZE) {
 		memcpy( &currentNoCompBlock[sizeOfCurrentNoCompBlock],&docids[start], len*4 );
 		sizeOfCurrentNoCompBlock += len;
@@ -192,11 +191,10 @@ public:
    * addDoc(1), addDoc(2) is ok; addDoc(2), addDoc(1) is not ok.
    */
   void addDoc(unsigned int docId) {
-	if(totalDocIdNum==0){
-		initSet();
-		currentNoCompBlock[sizeOfCurrentNoCompBlock++] = docId;    
-		lastAdded = docId;
-	} else if (sizeOfCurrentNoCompBlock == DEFAULT_BATCH_SIZE) {
+	if (PREDICT_TRUE(sizeOfCurrentNoCompBlock != DEFAULT_BATCH_SIZE)) {	
+	   currentNoCompBlock[sizeOfCurrentNoCompBlock++] = docId;
+	   lastAdded = docId;
+	} else {
 	    //the last docId of the block      
     	baseListForOnlyCompBlocks.push_back(lastAdded);
 
@@ -205,14 +203,10 @@ public:
 		//compressedByteSize += (*compRes).getCompressedSize();      
         sequenceOfCompBlocks.add(compRes);
 
-
 	    // next block
 	    sizeOfCurrentNoCompBlock = 1;
 	    lastAdded = docId;
 	    currentNoCompBlock[0] = docId;	
-	} else {	
-	   lastAdded = docId;
-	   currentNoCompBlock[sizeOfCurrentNoCompBlock++] = docId;
 	}
 	totalDocIdNum++;
   }
@@ -285,7 +279,7 @@ public:
 	Sink dst = (*compblock).getSink();
 	Source src(block,blocksize);
 	size_t compressedSize = codec.Compress(src,dst);
-	assert(compressedSize == compressedBlockSize);
+	//assert(compressedSize == compressedBlockSize);
 	return compblock;
   }
 
@@ -296,12 +290,11 @@ public:
   }
 
   /**
-   *  Binary search in the base list for the block that may contain docId greater than or equal to the target 
-   * 
+   *  Binary search in the base list for the block that may contain 
+   *  docId greater than or equal to the target 
    */
   int binarySearchInBaseListForBlockThatMayContainTarget(vector<unsigned int>& in, int start, int end, int target)
   {   
-	printf("binarySearchInBaseListForBlockThatMayContainTarget\n");
     //the baseListForOnlyCompBlocks (in) contains all last elements of the compressed blocks. 
     return binarySearchForFirstElementEqualOrLargerThanTarget(in, start, end, target);
   }
@@ -462,7 +455,14 @@ public:
 	iterDecompBlock  = new unsigned int[DEFAULT_BATCH_SIZE];
 	memcpy(iterDecompBlock,other.iterDecompBlock,sizeof(unsigned int)*DEFAULT_BATCH_SIZE);
    }
-
+ // Advances to the first beyond the current whose value is greater than or equal to target.
+ // we do linear search inside block because of delta encoding
+ int CompressedSet::Iterator::Advance(int target){
+   int doc;
+   while ((doc = nextDoc()) < target) {
+   }
+   return doc;
+ }
    CompressedSet::Iterator& CompressedSet::Iterator::operator=(const CompressedSet::Iterator& other){
 	set = other.set;
 	cursor = other.cursor;
@@ -512,6 +512,7 @@ public:
 	   	}
  		return lastAccessedDocId;
     }
+
 
 #endif  // COMPRESSED_SET_H__
 // DYNAMIC CACHING STRATEGY
