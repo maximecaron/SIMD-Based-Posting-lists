@@ -22,6 +22,8 @@
 #include "Sink.h"
 #include <vector>
 #include <tr1/memory>
+#include "CollectionHelper.h"
+
 using namespace std::tr1;
 const int NO_MORE_DOCS = std::numeric_limits<int>::max();
 class CompressedSet;
@@ -38,20 +40,20 @@ public:
 		//parent
 	    const CompressedSet* set;
 		int BLOCK_INDEX_SHIFT_BITS; // floor(log(blockSize))
-
+		int advanceToTargetInTheFollowingCompBlocksNoPostProcessing(int target, int startBlockIndex);
+		int getBlockIndex(int docIdIndex);
 	public:
 		Iterator(const CompressedSet* parentSet);
 		Iterator(const CompressedSet::Iterator& other);
 		CompressedSet::Iterator& operator=(const CompressedSet::Iterator& rhs);
 		~Iterator();
-		int getBlockIndex(int docIdIndex);
-		
+	
 		int docID();
 		int nextDoc();
 		int Advance(int target);
 	};
 private:	
-	unsigned sizeOfCurrentNoCompBlock; // the number of uncompressed elements that is hold in the currentNoCompBlock
+	unsigned int sizeOfCurrentNoCompBlock; // the number of uncompressed elements that is hold in the currentNoCompBlock
 	unsigned int lastAdded; // recently inserted/accessed element	
 	unsigned int compressedByteSize;	
 	//Two separate arrays containing
@@ -248,29 +250,6 @@ public:
     }
   }
 
-  /**
-   * Prefix Sum
-   * 
-   */
-  void preProcessBlockOpt(unsigned int block[], size_t start, size_t len)
-  {
-    for(int i=start+len-1; i>start; --i)
-    {
-      block[i] = block[i] - block[i-1] - 1; 
-    }
-  }
-
-
-  /**
-   * Reverse Prefix Sum
-   */
-  void postProcessBlock(unsigned int block[], size_t size){
-    for(int i=1; i<size; ++i) {
-      block[i] = block[i] + block[i-1] + 1;     
-    }
-  }
-
-
   shared_ptr<CompressedDeltaChunk> PForDeltaCompressOneBlock(unsigned int* block,size_t blocksize){
 	size_t compressedBlockSize = codec.compressed_length(block,blocksize);
 	// Allocate one CompressedDeltaChunk of the correct size
@@ -289,79 +268,6 @@ public:
     return finalRes;  
   }
 
-  /**
-   *  Binary search in the base list for the block that may contain 
-   *  docId greater than or equal to the target 
-   */
-  int binarySearchInBaseListForBlockThatMayContainTarget(vector<unsigned int>& in, int start, int end, int target)
-  {   
-    //the baseListForOnlyCompBlocks (in) contains all last elements of the compressed blocks. 
-    return binarySearchForFirstElementEqualOrLargerThanTarget(in, start, end, target);
-  }
-
-  /**
-   * Binary search for the first element that is equal to or larger than the target 
-   * 
-   * @param in must be sorted and contains no duplicates
-   * @param start
-   * @param end
-   * @param target
-   * @return the index of the first element in the array that is equal or larger than the target. -1 if the target is out of range.
-   */
-  int binarySearchForFirstElementEqualOrLargerThanTarget(vector<unsigned int>& in, int start, int end, int target) {
-    int mid;
-    while(start < end) {
-      mid = (start + end)/2;
-      if(in[mid] < target)
-        start = mid+1;
-      else if(in[mid] == target)
-        return mid;
-      else
-        end = mid;
-    }
-    if(in[start] >= target)
-      return start;
-    else
-      return -1;
-  }
-
-  /**
-   * Linear search for the first element that is equal to or larger than the target 
-   */
-	int searchForFirstElementEqualOrLargerThanTarget(vector<unsigned int>& in, int start, int end, int target) {
-      while(start <= end) {
-        if(in[start] >= target)
-          return start;
-        start++;
-      }
-      return -1;
-    }
-
-  /**
-   * Regular Binary search for the the target 
-   * 
-   * @param vals must be sorted
-   * @param start
-   * @param end
-   * @param target
-   * @return the index of the target in the input array. -1 if the target is out of range.
-   */
-	int binarySearchForTarget(vector<unsigned int>& vals, int start, int end, int target)
-	{
-	  int mid;
-	  while(start <= end)
-	  {
-	    mid = (start+end)/2;
-	    if(vals[mid]<target)
-	      start = mid+1;
-	    else if(vals[mid]==target)
-	      return mid;
-	    else
-	      end = mid-1;
-	  }
-	  return -1;
-	}
-	
 	/**
      * Number of compressed units (for example, docIds) plus the last block
      * @return docset size
@@ -372,7 +278,6 @@ public:
 
     //This method will not work after a call to flush()
 	inline bool find(unsigned int target)  { 
-		printf("find\n");
 	    //unsigned int lastId = lastAdded;
 		if(PREDICT_FALSE(totalDocIdNum==0))
 		      return false;
@@ -398,7 +303,6 @@ public:
 		    }
 		}
 
-
 		// if we have some CompBlocks
 		// first find which block to decompress by looking into baseListForOnlyCompBlocks
         if(baseListForOnlyCompBlocks.size()>0) {
@@ -414,11 +318,6 @@ public:
         }
 		return false;
 	  }
-	
-
-	
-	//PForDeltaDocIdIterator
-
 };
 
    // Returns an iterator that can be used to access the position of the
@@ -455,14 +354,7 @@ public:
 	iterDecompBlock  = new unsigned int[DEFAULT_BATCH_SIZE];
 	memcpy(iterDecompBlock,other.iterDecompBlock,sizeof(unsigned int)*DEFAULT_BATCH_SIZE);
    }
- // Advances to the first beyond the current whose value is greater than or equal to target.
- // we do linear search inside block because of delta encoding
- int CompressedSet::Iterator::Advance(int target){
-   int doc;
-   while ((doc = nextDoc()) < target) {
-   }
-   return doc;
- }
+
    CompressedSet::Iterator& CompressedSet::Iterator::operator=(const CompressedSet::Iterator& other){
 	set = other.set;
 	cursor = other.cursor;
@@ -480,9 +372,6 @@ public:
 	   delete[] iterDecompBlock;
    }
 
-    int CompressedSet::Iterator::docID(){
-		return lastAccessedDocId;
-    }
     /**
      * Get the index of the batch this cursor position falls into
      * 
@@ -513,7 +402,139 @@ public:
  		return lastAccessedDocId;
     }
 
+    int CompressedSet::Iterator::docID(){
+		return lastAccessedDocId;
+    }
 
+
+	/**
+	* Implement the same functionality as advanceToTargetInTheFollowingCompBlocks() 
+	* except that this function do prefix sum during searching
+	*
+	*/
+    int CompressedSet::Iterator::advanceToTargetInTheFollowingCompBlocksNoPostProcessing(int target, int startBlockIndex)
+    {
+      // searching from the current block
+      int iterBlockIndex = binarySearchInBaseListForBlockThatMayContainTarget(set->baseListForOnlyCompBlocks, startBlockIndex, set->baseListForOnlyCompBlocks.size()-1, target);
+	  assert(iterBlockIndex >= 0); //"ERROR: advanceToTargetInTheFollowingCompBlocks(): Impossible, we must be able to find the block"
+      if(iterBlockIndex < 0){
+		return -1;
+      }
+
+      Source src = set->sequenceOfCompBlocks.get(iterBlockIndex).getSource();
+      size_t uncompSize = set->codec.Uncompress(src,iterDecompBlock,DEFAULT_BATCH_SIZE);
+
+      lastAccessedDocId = iterDecompBlock[0];
+      if (lastAccessedDocId >= target)
+      {
+        cursor = (iterBlockIndex << BLOCK_INDEX_SHIFT_BITS) + 0;
+        return lastAccessedDocId;
+      }
+   
+
+      for (int offset=1; offset < uncompSize; ++offset)
+      {
+        lastAccessedDocId += ( iterDecompBlock[offset]+1);
+        if (lastAccessedDocId >= target) {
+          cursor = (iterBlockIndex << BLOCK_INDEX_SHIFT_BITS) + offset;
+          return lastAccessedDocId;
+        }
+      }
+      
+      // "ERROR: case 2: advanceToTargetInTheFollowingCompBlocks(), Impossible, we must be able to find the target" + target + " in the block " + iterBlockIndex);
+      assert(iterBlockIndex >= 0); 
+      return -1;
+    }
+
+    // Advances to the first beyond the current 
+    // whose value is greater than or equal to target.
+    // we do linear search inside block because of delta encoding
+    int CompressedSet::Iterator::Advance(int target){	  
+     // int doc;
+     // while ((doc = nextDoc()) < target) {
+     // }
+     // return doc;
+      
+    // if the pointer points past the end
+    if(totalDocIdNum <= 0 || cursor == totalDocIdNum){
+	    lastAccessedDocId = NO_MORE_DOCS;
+	    return NO_MORE_DOCS;
+    }
+    // if the pointer points to the end
+    if(++cursor == totalDocIdNum){
+	    lastAccessedDocId = NO_MORE_DOCS;
+	    return NO_MORE_DOCS;
+	}
+	// the expected behavior is to find the first element AFTER the current cursor, 
+	// who is equal or larger than target
+	if(target <= lastAccessedDocId) {
+	    target = lastAccessedDocId + 1;
+	}
+	
+	int iterBlockIndex = cursor >> BLOCK_SIZE_BIT; 
+	int offset = cursor & BLOCK_SIZE_MODULO;
+	
+	// if there is noComp block, check noComp block 
+    // the next element is in currently in the last block , or
+    // currently not in the last block, but the target is larger than
+    // the last element of the last compressed block
+	unsigned int sizeOfCurrentNoCompBlock = set->sizeOfCurrentNoCompBlock;
+	size_t baseListForOnlyCompBlocksSize = set->baseListForOnlyCompBlocks.size();
+    if(sizeOfCurrentNoCompBlock>0) {// if there exists the last decomp block 
+	  if(iterBlockIndex == compBlockNum || (baseListForOnlyCompBlocksSize>0 && target > set->baseListForOnlyCompBlocks[baseListForOnlyCompBlocksSize-1])) {   
+	    offset = binarySearchForFirstElementEqualOrLargerThanTarget(set->currentNoCompBlock, 0, sizeOfCurrentNoCompBlock-1, target);
+   
+	    if(offset>=0){         
+	      iterBlockIndex = compBlockNum;
+	      lastAccessedDocId = set->currentNoCompBlock[offset];            
+	      cursor = (iterBlockIndex << BLOCK_INDEX_SHIFT_BITS) + offset;
+	      return lastAccessedDocId;
+	    } else {
+	      // hy: to avoid the repeated lookup next time once it reaches the end of the sequence
+	      cursor = totalDocIdNum; 
+	      lastAccessedDocId = NO_MORE_DOCS;
+	      return lastAccessedDocId;
+	    }
+	  }
+    }
+    
+     // if we cannot not find it in the noComp block, we check the comp blocks
+     if(baseListForOnlyCompBlocksSize>0 && target <= set->baseListForOnlyCompBlocks[baseListForOnlyCompBlocksSize-1]) {
+       // for the following cases, it must exist in one of the comp blocks since target<= the last base in the comp blocks
+       if(offset == 0) {
+         // searching the right block from the current block to the last block
+         lastAccessedDocId = advanceToTargetInTheFollowingCompBlocksNoPostProcessing(target, iterBlockIndex);
+         return lastAccessedDocId;
+       } else { // offset > 0, the current block has been decompressed, so, first test the first block; and then do sth like case 2       
+         if(target <= set->baseListForOnlyCompBlocks[iterBlockIndex]) {
+           while(offset < DEFAULT_BATCH_SIZE) {
+             lastAccessedDocId += (iterDecompBlock[offset]+1);
+            
+             if (lastAccessedDocId >= target) {
+               break;
+             }
+             offset++;
+           }
+
+		   if (offset == DEFAULT_BATCH_SIZE) {
+			printf("Error case 3: Impossible, we must be able to find the target %d in the block, lastAccessedDocId: %d , baseListForOnlyCompBlocks[%d]\n",
+			target,lastAccessedDocId,iterBlockIndex);
+           }
+	       assert(offset != DEFAULT_BATCH_SIZE);
+       
+           cursor = (iterBlockIndex << BLOCK_INDEX_SHIFT_BITS) + offset;    
+           return lastAccessedDocId;
+         } else { // hy: there must exist other comp blocks between the current block and noComp block since target <= baseListForOnlyCompBlocks.get(baseListForOnlyCompBlocks.size()-1)
+           lastAccessedDocId = advanceToTargetInTheFollowingCompBlocksNoPostProcessing(target, iterBlockIndex);
+           //lastAccessedDocId = LS_advanceToTargetInTheFollowingCompBlocks(target, iterBlockIndex);
+           return lastAccessedDocId;
+         }
+       }
+     }
+    
+     lastAccessedDocId = NO_MORE_DOCS;
+     return lastAccessedDocId;
+    }
 #endif  // COMPRESSED_SET_H__
 // DYNAMIC CACHING STRATEGY
 
