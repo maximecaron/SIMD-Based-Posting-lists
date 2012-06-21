@@ -14,29 +14,29 @@ public:
   }
 
   shared_ptr<CompressedDeltaChunk> allocateBlock(size_t compressedSize){
-	shared_ptr<CompressedDeltaChunk> compblock(new CompressedDeltaChunk(compressedSize));
-	return compblock;
+    shared_ptr<CompressedDeltaChunk> compblock(new CompressedDeltaChunk(compressedSize));
+    return compblock;
   }
 
   void add(shared_ptr<CompressedDeltaChunk> val) {
-	data2.push_back(val);
+    data2.push_back(val);
   }
 
   const CompressedDeltaChunk& get(int index) const  {
-	return *data2[index];
+    return *data2[index];
   }
 
   void compact(){
-	data2.resize(data2.size());
+    data2.resize(data2.size());
   }
 
   size_t size() const {
-    return	data2.size();
+    return  data2.size();
   }
 
   int getSerialIntNum() const {
     int num = 1; // _len
-	for(int i=0; i<data2.size(); i++)
+    for(int i=0; i<data2.size(); i++)
     {
         num += 1 + (*data2[i]).getCompressedSize(); // 1 is the int to record the length of the array
     }
@@ -44,23 +44,23 @@ public:
   }
 
   void write(ostream & out) const{
-	int size = data2.size();
-	out.write((char*)&size,4);
+    int size = data2.size();
+    out.write((char*)&size,4);
 
-	for(int i=0; i<data2.size(); i++)
+    for(int i=0; i<data2.size(); i++)
     {
-		(*data2[i]).write(out);
+        (*data2[i]).write(out);
     }
   }
 
   void read(istream & in){
-	int size = 0;
-	in.read((char*)&size,4);
-	data2.clear();
-	for(int i = 0; i<size; i++){
-	  shared_ptr<CompressedDeltaChunk> compblock(new CompressedDeltaChunk(in));
-	  data2.push_back(compblock);
-	}
+    int size = 0;
+    in.read((char*)&size,4);
+    data2.clear();
+    for(int i = 0; i<size; i++){
+      shared_ptr<CompressedDeltaChunk> compblock(new CompressedDeltaChunk(in));
+      data2.push_back(compblock);
+    }
   }
 };
 #endif // DELTA_CHUNK_STORE_H__

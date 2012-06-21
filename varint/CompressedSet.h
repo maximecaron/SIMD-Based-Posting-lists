@@ -1,5 +1,4 @@
 //based on https://github.com/maximecaron/kamikaze/blob/master/src/main/java/com/kamikaze/docidset/impl/PForDeltaDocIdSet.java
-
 #ifndef COMPRESSED_SET_H__
 #define COMPRESSED_SET_H__
 
@@ -30,151 +29,151 @@ class CompressedSet;
 
 class CompressedSet  {
 public:
-	class Iterator {
-		int cursor; // the current pointer of the input 
-	    unsigned int totalDocIdNum;
-	    int lastAccessedDocId; 
-		int compBlockNum; // the number of compressed blocks
-		unsigned int*  iterDecompBlock; // temporary storage for the decompressed data
+    class Iterator {
+        int cursor; // the current pointer of the input 
+        unsigned int totalDocIdNum;
+        int lastAccessedDocId; 
+        int compBlockNum; // the number of compressed blocks
+        unsigned int*  iterDecompBlock; // temporary storage for the decompressed data
 
-		//parent
-	    const CompressedSet* set;
-		int BLOCK_INDEX_SHIFT_BITS; // floor(log(blockSize))
-		int advanceToTargetInTheFollowingCompBlocksNoPostProcessing(int target, int startBlockIndex);
-		int getBlockIndex(int docIdIndex);
-	public:
-		Iterator(const CompressedSet* parentSet);
-		Iterator(const CompressedSet::Iterator& other);
-		CompressedSet::Iterator& operator=(const CompressedSet::Iterator& rhs);
-		~Iterator();
-	
-		int docID();
-		int nextDoc();
-		int Advance(int target);
-	};
-private:	
-	unsigned int sizeOfCurrentNoCompBlock; // the number of uncompressed elements that is hold in the currentNoCompBlock
-	unsigned int lastAdded; // recently inserted/accessed element	
-	unsigned int compressedByteSize;	
-	//Two separate arrays containing
-	//the last docID 
-	//and size of each block in words in uncompressed form.
-	vector<unsigned int> baseListForOnlyCompBlocks;
-	unsigned int* myDecompBlock;
+        //parent
+        const CompressedSet* set;
+        int BLOCK_INDEX_SHIFT_BITS; // floor(log(blockSize))
+        int advanceToTargetInTheFollowingCompBlocksNoPostProcessing(int target, int startBlockIndex);
+        int getBlockIndex(int docIdIndex);
+    public:
+        Iterator(const CompressedSet* parentSet);
+        Iterator(const CompressedSet::Iterator& other);
+        CompressedSet::Iterator& operator=(const CompressedSet::Iterator& rhs);
+        ~Iterator();
+    
+        int docID();
+        int nextDoc();
+        int Advance(int target);
+    };
+private:    
+    unsigned int sizeOfCurrentNoCompBlock; // the number of uncompressed elements that is hold in the currentNoCompBlock
+    unsigned int lastAdded; // recently inserted/accessed element   
+    unsigned int compressedByteSize;    
+    //Two separate arrays containing
+    //the last docID 
+    //and size of each block in words in uncompressed form.
+    vector<unsigned int> baseListForOnlyCompBlocks;
+    unsigned int* myDecompBlock;
 public:
-	Codec codec; // varint encoding codec    
-	unsigned int totalDocIdNum; // the total number of elemnts that have been inserted/accessed so far	
-	unsigned int* currentNoCompBlock;  // the memory used to store the uncompressed elements. Once the block is full, all its elements are compressed into sequencOfCompBlock and the block is cleared.
-	DeltaChunkStore sequenceOfCompBlocks; // Store for list compressed delta chunk 
-	
-	
-	CompressedSet(const CompressedSet& other){
-		myDecompBlock = new unsigned int[DEFAULT_BATCH_SIZE];
-		currentNoCompBlock = new unsigned int[DEFAULT_BATCH_SIZE];
-		lastAdded = other.lastAdded;
-		//compressedByteSize = other.compressedByteSize;
-		sizeOfCurrentNoCompBlock = other.sizeOfCurrentNoCompBlock;
-		totalDocIdNum = other.totalDocIdNum;
-		memcpy( myDecompBlock,other.myDecompBlock, sizeof(unsigned int)*DEFAULT_BATCH_SIZE);
-		memcpy( currentNoCompBlock,other.currentNoCompBlock, sizeof(unsigned int)*DEFAULT_BATCH_SIZE );
-		
-	}
-	
-	CompressedSet(){
-		myDecompBlock = new unsigned int[DEFAULT_BATCH_SIZE];
-		currentNoCompBlock = new unsigned int[DEFAULT_BATCH_SIZE];
-		lastAdded = 0;
-		//compressedByteSize = 0;
-		sizeOfCurrentNoCompBlock = 0;
-		totalDocIdNum = 0;
-		initSet();
-	}
-	
-	~CompressedSet(){
-	   	delete[] currentNoCompBlock;
-	    delete[] myDecompBlock;
+    Codec codec; // varint encoding codec    
+    unsigned int totalDocIdNum; // the total number of elemnts that have been inserted/accessed so far  
+    unsigned int* currentNoCompBlock;  // the memory used to store the uncompressed elements. Once the block is full, all its elements are compressed into sequencOfCompBlock and the block is cleared.
+    DeltaChunkStore sequenceOfCompBlocks; // Store for list compressed delta chunk 
+    
+    
+    CompressedSet(const CompressedSet& other){
+        myDecompBlock = new unsigned int[DEFAULT_BATCH_SIZE];
+        currentNoCompBlock = new unsigned int[DEFAULT_BATCH_SIZE];
+        lastAdded = other.lastAdded;
+        //compressedByteSize = other.compressedByteSize;
+        sizeOfCurrentNoCompBlock = other.sizeOfCurrentNoCompBlock;
+        totalDocIdNum = other.totalDocIdNum;
+        memcpy( myDecompBlock,other.myDecompBlock, sizeof(unsigned int)*DEFAULT_BATCH_SIZE);
+        memcpy( currentNoCompBlock,other.currentNoCompBlock, sizeof(unsigned int)*DEFAULT_BATCH_SIZE );
+        
+    }
+    
+    CompressedSet(){
+        myDecompBlock = new unsigned int[DEFAULT_BATCH_SIZE];
+        currentNoCompBlock = new unsigned int[DEFAULT_BATCH_SIZE];
+        lastAdded = 0;
+        //compressedByteSize = 0;
+        sizeOfCurrentNoCompBlock = 0;
+        totalDocIdNum = 0;
+        initSet();
+    }
+    
+    ~CompressedSet(){
+        delete[] currentNoCompBlock;
+        delete[] myDecompBlock;
     }
 
 
     void write(ostream & out) const{
-		out.write((char*)&lastAdded,4);
-		out.write((char*)&totalDocIdNum,4);
-			
-		//write base (skipping info)
-		int baseListForOnlyCompBlocksSize = 1 + baseListForOnlyCompBlocks.size();
-		out.write((char*)&baseListForOnlyCompBlocksSize,4);
-		out.write((char*)&baseListForOnlyCompBlocks[0],baseListForOnlyCompBlocksSize*4);
-		
-		//write the last block (uncompressed) 
-		out.write((char*)&sizeOfCurrentNoCompBlock,4);
-		out.write((char*)&currentNoCompBlock[0],sizeOfCurrentNoCompBlock*4);
-		
-		//write compressed blocks
-		sequenceOfCompBlocks.write(out);
-        out.flush();		
+        out.write((char*)&lastAdded,4);
+        out.write((char*)&totalDocIdNum,4);
+            
+        //write base (skipping info)
+        int baseListForOnlyCompBlocksSize = 1 + baseListForOnlyCompBlocks.size();
+        out.write((char*)&baseListForOnlyCompBlocksSize,4);
+        out.write((char*)&baseListForOnlyCompBlocks[0],baseListForOnlyCompBlocksSize*4);
+        
+        //write the last block (uncompressed) 
+        out.write((char*)&sizeOfCurrentNoCompBlock,4);
+        out.write((char*)&currentNoCompBlock[0],sizeOfCurrentNoCompBlock*4);
+        
+        //write compressed blocks
+        sequenceOfCompBlocks.write(out);
+        out.flush();        
     }
 
     void read(istream & in){
-		memset(myDecompBlock, 0, DEFAULT_BATCH_SIZE*4);
-		memset(currentNoCompBlock, 0, DEFAULT_BATCH_SIZE*4);
+        memset(myDecompBlock, 0, DEFAULT_BATCH_SIZE*4);
+        memset(currentNoCompBlock, 0, DEFAULT_BATCH_SIZE*4);
 
-		//read lastAdded
-		in.read((char*)&lastAdded,4);
-		//read lastAdded
-		in.read((char*)&totalDocIdNum,4);
-		
-		//read base (skipping info)
-		int baseListForOnlyCompBlocksSize = 0;
-		in.read((char*)&baseListForOnlyCompBlocksSize,4);
-		baseListForOnlyCompBlocks.clear();
-		baseListForOnlyCompBlocks.resize(baseListForOnlyCompBlocksSize);
-		in.read((char*)&baseListForOnlyCompBlocks[0],baseListForOnlyCompBlocksSize*4);
+        //read lastAdded
+        in.read((char*)&lastAdded,4);
+        //read lastAdded
+        in.read((char*)&totalDocIdNum,4);
+        
+        //read base (skipping info)
+        int baseListForOnlyCompBlocksSize = 0;
+        in.read((char*)&baseListForOnlyCompBlocksSize,4);
+        baseListForOnlyCompBlocks.clear();
+        baseListForOnlyCompBlocks.resize(baseListForOnlyCompBlocksSize);
+        in.read((char*)&baseListForOnlyCompBlocks[0],baseListForOnlyCompBlocksSize*4);
 
 
-		//read the last block (uncompressed) 
-		in.read((char*)&sizeOfCurrentNoCompBlock,4);
-		in.read((char*)&currentNoCompBlock[0],sizeOfCurrentNoCompBlock*4);
+        //read the last block (uncompressed) 
+        in.read((char*)&sizeOfCurrentNoCompBlock,4);
+        in.read((char*)&currentNoCompBlock[0],sizeOfCurrentNoCompBlock*4);
 
-		//write compressed blocks
-		sequenceOfCompBlocks.read(in);
-		
+        //write compressed blocks
+        sequenceOfCompBlocks.read(in);
+        
     }
 
     CompressedSet::Iterator iterator() {
-	   CompressedSet::Iterator it(this);
+       CompressedSet::Iterator it(this);
        it.nextDoc();
        return it;
     }
 
     void addDocs(unsigned int docids[],size_t start,size_t len){
-	  if ((len + sizeOfCurrentNoCompBlock) <= DEFAULT_BATCH_SIZE) {
-		memcpy( &currentNoCompBlock[sizeOfCurrentNoCompBlock],&docids[start], len*4 );
-		sizeOfCurrentNoCompBlock += len;
-	  } else {		
-		 // the first block can be completed so fillup a complet block
-		 int copyLen = DEFAULT_BATCH_SIZE - sizeOfCurrentNoCompBlock;
-		 memcpy( &currentNoCompBlock[sizeOfCurrentNoCompBlock],&docids[start], copyLen*4 );
-		 sizeOfCurrentNoCompBlock = DEFAULT_BATCH_SIZE;
-		
-		 //Add to the list of last element of each block
-		 baseListForOnlyCompBlocks.push_back(currentNoCompBlock[DEFAULT_BATCH_SIZE-1]);
-		 shared_ptr<CompressedDeltaChunk> compRes = PForDeltaCompressCurrentBlock();
-		 //compressedByteSize += (*compRes).getCompressedSize();      
+      if ((len + sizeOfCurrentNoCompBlock) <= DEFAULT_BATCH_SIZE) {
+        memcpy( &currentNoCompBlock[sizeOfCurrentNoCompBlock],&docids[start], len*4 );
+        sizeOfCurrentNoCompBlock += len;
+      } else {      
+         // the first block can be completed so fillup a complet block
+         int copyLen = DEFAULT_BATCH_SIZE - sizeOfCurrentNoCompBlock;
+         memcpy( &currentNoCompBlock[sizeOfCurrentNoCompBlock],&docids[start], copyLen*4 );
+         sizeOfCurrentNoCompBlock = DEFAULT_BATCH_SIZE;
+        
+         //Add to the list of last element of each block
+         baseListForOnlyCompBlocks.push_back(currentNoCompBlock[DEFAULT_BATCH_SIZE-1]);
+         shared_ptr<CompressedDeltaChunk> compRes = PForDeltaCompressCurrentBlock();
+         //compressedByteSize += (*compRes).getCompressedSize();      
          sequenceOfCompBlocks.add(compRes);
 
          // the middle blocks (copy all possible full block)
          int leftLen = len - copyLen;
          int newStart = start + copyLen;
          while(leftLen > DEFAULT_BATCH_SIZE) {
-	        baseListForOnlyCompBlocks.push_back(docids[newStart+DEFAULT_BATCH_SIZE-1]);
-        	memcpy( &currentNoCompBlock[0],&docids[newStart], DEFAULT_BATCH_SIZE*4 );
+            baseListForOnlyCompBlocks.push_back(docids[newStart+DEFAULT_BATCH_SIZE-1]);
+            memcpy( &currentNoCompBlock[0],&docids[newStart], DEFAULT_BATCH_SIZE*4 );
 
             PForDeltaCompressCurrentBlock();
             compRes = PForDeltaCompressCurrentBlock();
-	        //compressedByteSize += (*compRes).getCompressedSize();      
-	        sequenceOfCompBlocks.add(compRes);
-	        leftLen -= DEFAULT_BATCH_SIZE;
-	        newStart += DEFAULT_BATCH_SIZE;
+            //compressedByteSize += (*compRes).getCompressedSize();      
+            sequenceOfCompBlocks.add(compRes);
+            leftLen -= DEFAULT_BATCH_SIZE;
+            newStart += DEFAULT_BATCH_SIZE;
          }
 
          // the last block
@@ -182,8 +181,8 @@ public:
             memcpy( &currentNoCompBlock[0],&docids[newStart], leftLen*4 );
          }
          sizeOfCurrentNoCompBlock = leftLen;
-	  }
-	  lastAdded = docids[start+len-1];
+      }
+      lastAdded = docids[start+len-1];
       totalDocIdNum += len;
     }
 
@@ -193,34 +192,34 @@ public:
    * addDoc(1), addDoc(2) is ok; addDoc(2), addDoc(1) is not ok.
    */
   void addDoc(unsigned int docId) {
-	if (PREDICT_TRUE(sizeOfCurrentNoCompBlock != DEFAULT_BATCH_SIZE)) {	
-	   currentNoCompBlock[sizeOfCurrentNoCompBlock++] = docId;
-	   lastAdded = docId;
-	} else {
-	    //the last docId of the block      
-    	baseListForOnlyCompBlocks.push_back(lastAdded);
+    if (PREDICT_TRUE(sizeOfCurrentNoCompBlock != DEFAULT_BATCH_SIZE)) { 
+       currentNoCompBlock[sizeOfCurrentNoCompBlock++] = docId;
+       lastAdded = docId;
+    } else {
+        //the last docId of the block      
+        baseListForOnlyCompBlocks.push_back(lastAdded);
 
-	    // compress currentNoCompBlock[] (excluding the input docId),
-		shared_ptr<CompressedDeltaChunk> compRes = PForDeltaCompressCurrentBlock();
-		//compressedByteSize += (*compRes).getCompressedSize();      
+        // compress currentNoCompBlock[] (excluding the input docId),
+        shared_ptr<CompressedDeltaChunk> compRes = PForDeltaCompressCurrentBlock();
+        //compressedByteSize += (*compRes).getCompressedSize();      
         sequenceOfCompBlocks.add(compRes);
 
-	    // next block
-	    sizeOfCurrentNoCompBlock = 1;
-	    lastAdded = docId;
-	    currentNoCompBlock[0] = docId;	
-	}
-	totalDocIdNum++;
+        // next block
+        sizeOfCurrentNoCompBlock = 1;
+        lastAdded = docId;
+        currentNoCompBlock[0] = docId;  
+    }
+    totalDocIdNum++;
   }
 
   void compact(){
-	sequenceOfCompBlocks.compact();
-	baseListForOnlyCompBlocks.resize(baseListForOnlyCompBlocks.size());
+    sequenceOfCompBlocks.compact();
+    baseListForOnlyCompBlocks.resize(baseListForOnlyCompBlocks.size());
   }
 
 
   void initSet(){
-	memset(currentNoCompBlock,0,DEFAULT_BATCH_SIZE);
+    memset(currentNoCompBlock,0,DEFAULT_BATCH_SIZE);
   }
 
   /**
@@ -228,13 +227,13 @@ public:
    */
   void flush()
   {
-	baseListForOnlyCompBlocks.push_back(currentNoCompBlock[sizeOfCurrentNoCompBlock-1]);
-	preProcessBlock(currentNoCompBlock, sizeOfCurrentNoCompBlock);
-	shared_ptr<CompressedDeltaChunk> compRes = PForDeltaCompressOneBlock(currentNoCompBlock,sizeOfCurrentNoCompBlock);
-	
+    baseListForOnlyCompBlocks.push_back(currentNoCompBlock[sizeOfCurrentNoCompBlock-1]);
+    preProcessBlock(currentNoCompBlock, sizeOfCurrentNoCompBlock);
+    shared_ptr<CompressedDeltaChunk> compRes = PForDeltaCompressOneBlock(currentNoCompBlock,sizeOfCurrentNoCompBlock);
+    
     //compressedByteSize += (*compRes).getCompressedSize();      
     sequenceOfCompBlocks.add(compRes);
-	sizeOfCurrentNoCompBlock = 0;
+    sizeOfCurrentNoCompBlock = 0;
 
   }
 
@@ -251,15 +250,15 @@ public:
   }
 
   shared_ptr<CompressedDeltaChunk> PForDeltaCompressOneBlock(unsigned int* block,size_t blocksize){
-	size_t compressedBlockSize = codec.compressed_length(block,blocksize);
-	// Allocate one CompressedDeltaChunk of the correct size
-	shared_ptr<CompressedDeltaChunk> compblock = sequenceOfCompBlocks.allocateBlock(compressedBlockSize);
+    size_t compressedBlockSize = codec.compressed_length(block,blocksize);
+    // Allocate one CompressedDeltaChunk of the correct size
+    shared_ptr<CompressedDeltaChunk> compblock = sequenceOfCompBlocks.allocateBlock(compressedBlockSize);
     // Obtain a sink for this new chunk
-	Sink dst = (*compblock).getSink();
-	Source src(block,blocksize);
-	size_t compressedSize = codec.Compress(src,dst);
-	//assert(compressedSize == compressedBlockSize);
-	return compblock;
+    Sink dst = (*compblock).getSink();
+    Source src(block,blocksize);
+    size_t compressedSize = codec.Compress(src,dst);
+    //assert(compressedSize == compressedBlockSize);
+    return compblock;
   }
 
   shared_ptr<CompressedDeltaChunk> PForDeltaCompressCurrentBlock(){ 
@@ -268,7 +267,7 @@ public:
     return finalRes;  
   }
 
-	/**
+    /**
      * Number of compressed units (for example, docIds) plus the last block
      * @return docset size
      */
@@ -277,47 +276,47 @@ public:
     }
 
     //This method will not work after a call to flush()
-	inline bool find(unsigned int target)  { 
-	    //unsigned int lastId = lastAdded;
-		if(PREDICT_FALSE(totalDocIdNum==0))
-		      return false;
+    inline bool find(unsigned int target)  { 
+        //unsigned int lastId = lastAdded;
+        if(PREDICT_FALSE(totalDocIdNum==0))
+              return false;
         if (sizeOfCurrentNoCompBlock!=0){
-		    //int lastId = currentNoCompBlock[sizeOfCurrentNoCompBlock-1];
-		    if(target > lastAdded)
-		    {
-		      return false;
-		    }
+            //int lastId = currentNoCompBlock[sizeOfCurrentNoCompBlock-1];
+            if(target > lastAdded)
+            {
+              return false;
+            }
 
-		    // first search noComp block
-		    if(baseListForOnlyCompBlocks.size()==0 || target>baseListForOnlyCompBlocks[baseListForOnlyCompBlocks.size()-1])
-		    {
-		      int i;
-		      for(i=0; i<sizeOfCurrentNoCompBlock; ++i)
-		      {
-		        if(currentNoCompBlock[i] >= target)
-		          break;
-		      }
-		      if(i == sizeOfCurrentNoCompBlock) 
-		        return false;
-		      return currentNoCompBlock[i] == target; 
-		    }
-		}
-
-		// if we have some CompBlocks
-		// first find which block to decompress by looking into baseListForOnlyCompBlocks
-        if(baseListForOnlyCompBlocks.size()>0) {
-	        // baseListForOnlyCompBlocks.size() must then >0
-	       int iterDecompBlock = binarySearchInBaseListForBlockThatMayContainTarget(baseListForOnlyCompBlocks, 0, baseListForOnlyCompBlocks.size()-1, target);
-	       if(iterDecompBlock<0)
-	         return false; // target is bigger then biggest value
-		    
-		   ////uncompress block 
-		   Source src = sequenceOfCompBlocks.get(iterDecompBlock).getSource();
-           size_t uncompSize = codec.Uncompress(src,myDecompBlock,DEFAULT_BATCH_SIZE);
-		   return codec.findInDeltaArray(myDecompBlock,uncompSize,target);
+            // first search noComp block
+            if(baseListForOnlyCompBlocks.size()==0 || target>baseListForOnlyCompBlocks[baseListForOnlyCompBlocks.size()-1])
+            {
+              int i;
+              for(i=0; i<sizeOfCurrentNoCompBlock; ++i)
+              {
+                if(currentNoCompBlock[i] >= target)
+                  break;
+              }
+              if(i == sizeOfCurrentNoCompBlock) 
+                return false;
+              return currentNoCompBlock[i] == target; 
+            }
         }
-		return false;
-	  }
+
+        // if we have some CompBlocks
+        // first find which block to decompress by looking into baseListForOnlyCompBlocks
+        if(baseListForOnlyCompBlocks.size()>0) {
+            // baseListForOnlyCompBlocks.size() must then >0
+           int iterDecompBlock = binarySearchInBaseListForBlockThatMayContainTarget(baseListForOnlyCompBlocks, 0, baseListForOnlyCompBlocks.size()-1, target);
+           if(iterDecompBlock<0)
+             return false; // target is bigger then biggest value
+            
+           ////uncompress block 
+           Source src = sequenceOfCompBlocks.get(iterDecompBlock).getSource();
+           size_t uncompSize = codec.Uncompress(src,myDecompBlock,DEFAULT_BATCH_SIZE);
+           return codec.findInDeltaArray(myDecompBlock,uncompSize,target);
+        }
+        return false;
+      }
 };
 
    // Returns an iterator that can be used to access the position of the
@@ -325,51 +324,51 @@ public:
    // of set bits
    // It might be much faster to use the toArray method if you want to retrieve the set bits.
    CompressedSet::Iterator::Iterator(const CompressedSet* const parentSet){
-	    set = parentSet;
+        set = parentSet;
         compBlockNum = set->sequenceOfCompBlocks.size();
-		cursor = -1;
-		int i=-1;
-		lastAccessedDocId = -1;
-		iterDecompBlock  = new unsigned int[DEFAULT_BATCH_SIZE];
-		for(int x=DEFAULT_BATCH_SIZE; x>0; ++i, x = x>> 1) {
-			
-		}
-	    BLOCK_INDEX_SHIFT_BITS = i;
-		totalDocIdNum = set->totalDocIdNum;
-		if (set->totalDocIdNum <= 0){
-			cursor = set->totalDocIdNum;
-		}
+        cursor = -1;
+        int i=-1;
+        lastAccessedDocId = -1;
+        iterDecompBlock  = new unsigned int[DEFAULT_BATCH_SIZE];
+        for(int x=DEFAULT_BATCH_SIZE; x>0; ++i, x = x>> 1) {
+            
+        }
+        BLOCK_INDEX_SHIFT_BITS = i;
+        totalDocIdNum = set->totalDocIdNum;
+        if (set->totalDocIdNum <= 0){
+            cursor = set->totalDocIdNum;
+        }
     }
 
 
    //TODO have a copy constructor and assignator for iterator
    
    CompressedSet::Iterator::Iterator(const CompressedSet::Iterator& other){
-	set = other.set;
-	cursor = other.cursor;
-	totalDocIdNum = other.totalDocIdNum;
-	lastAccessedDocId = other.lastAccessedDocId;
-	compBlockNum = other.compBlockNum;
-	BLOCK_INDEX_SHIFT_BITS = other.BLOCK_INDEX_SHIFT_BITS;
-	iterDecompBlock  = new unsigned int[DEFAULT_BATCH_SIZE];
-	memcpy(iterDecompBlock,other.iterDecompBlock,sizeof(unsigned int)*DEFAULT_BATCH_SIZE);
+    set = other.set;
+    cursor = other.cursor;
+    totalDocIdNum = other.totalDocIdNum;
+    lastAccessedDocId = other.lastAccessedDocId;
+    compBlockNum = other.compBlockNum;
+    BLOCK_INDEX_SHIFT_BITS = other.BLOCK_INDEX_SHIFT_BITS;
+    iterDecompBlock  = new unsigned int[DEFAULT_BATCH_SIZE];
+    memcpy(iterDecompBlock,other.iterDecompBlock,sizeof(unsigned int)*DEFAULT_BATCH_SIZE);
    }
 
    CompressedSet::Iterator& CompressedSet::Iterator::operator=(const CompressedSet::Iterator& other){
-	set = other.set;
-	cursor = other.cursor;
-	totalDocIdNum = other.totalDocIdNum;
-	lastAccessedDocId = other.lastAccessedDocId;
-	compBlockNum = other.compBlockNum;
-	BLOCK_INDEX_SHIFT_BITS = other.BLOCK_INDEX_SHIFT_BITS;
-	delete[] iterDecompBlock;
-	iterDecompBlock  = new unsigned int[DEFAULT_BATCH_SIZE];
-	memcpy(iterDecompBlock,other.iterDecompBlock,sizeof(unsigned int)*DEFAULT_BATCH_SIZE);
-	return *this;
+    set = other.set;
+    cursor = other.cursor;
+    totalDocIdNum = other.totalDocIdNum;
+    lastAccessedDocId = other.lastAccessedDocId;
+    compBlockNum = other.compBlockNum;
+    BLOCK_INDEX_SHIFT_BITS = other.BLOCK_INDEX_SHIFT_BITS;
+    delete[] iterDecompBlock;
+    iterDecompBlock  = new unsigned int[DEFAULT_BATCH_SIZE];
+    memcpy(iterDecompBlock,other.iterDecompBlock,sizeof(unsigned int)*DEFAULT_BATCH_SIZE);
+    return *this;
    }
 
    CompressedSet::Iterator::~Iterator(){
-	   delete[] iterDecompBlock;
+       delete[] iterDecompBlock;
    }
 
     /**
@@ -383,42 +382,42 @@ public:
     }
 
     int CompressedSet::Iterator::nextDoc(){
-		//: if the pointer points to the end
-	    if(++cursor == totalDocIdNum) { 
+        //: if the pointer points to the end
+        if(++cursor == totalDocIdNum) { 
           lastAccessedDocId = NO_MORE_DOCS;
           return lastAccessedDocId;
         }
         int iterBlockIndex = cursor >> BLOCK_SIZE_BIT; 
-	    int offset = cursor & BLOCK_SIZE_MODULO;
-		if(iterBlockIndex == compBlockNum) { 
-	       	lastAccessedDocId = set->currentNoCompBlock[offset];
-		} else if (PREDICT_TRUE(offset)){ 
-			lastAccessedDocId += (iterDecompBlock[offset]+1);
-		} else { 	// (offset==0) must be in one of the compressed blocks
-	       	Source src = set->sequenceOfCompBlocks.get(iterBlockIndex).getSource();
-	       	size_t uncompSize = set->codec.Uncompress(src,iterDecompBlock,DEFAULT_BATCH_SIZE);
-	       	lastAccessedDocId = iterDecompBlock[offset];
-	   	}
- 		return lastAccessedDocId;
+        int offset = cursor & BLOCK_SIZE_MODULO;
+        if(iterBlockIndex == compBlockNum) { 
+            lastAccessedDocId = set->currentNoCompBlock[offset];
+        } else if (PREDICT_TRUE(offset)){ 
+            lastAccessedDocId += (iterDecompBlock[offset]+1);
+        } else {    // (offset==0) must be in one of the compressed blocks
+            Source src = set->sequenceOfCompBlocks.get(iterBlockIndex).getSource();
+            size_t uncompSize = set->codec.Uncompress(src,iterDecompBlock,DEFAULT_BATCH_SIZE);
+            lastAccessedDocId = iterDecompBlock[offset];
+        }
+        return lastAccessedDocId;
     }
 
     int CompressedSet::Iterator::docID(){
-		return lastAccessedDocId;
+        return lastAccessedDocId;
     }
 
 
-	/**
-	* Implement the same functionality as advanceToTargetInTheFollowingCompBlocks() 
-	* except that this function do prefix sum during searching
-	*
-	*/
+    /**
+    * Implement the same functionality as advanceToTargetInTheFollowingCompBlocks() 
+    * except that this function do prefix sum during searching
+    *
+    */
     int CompressedSet::Iterator::advanceToTargetInTheFollowingCompBlocksNoPostProcessing(int target, int startBlockIndex)
     {
       // searching from the current block
       int iterBlockIndex = binarySearchInBaseListForBlockThatMayContainTarget(set->baseListForOnlyCompBlocks, startBlockIndex, set->baseListForOnlyCompBlocks.size()-1, target);
-	  assert(iterBlockIndex >= 0); //"ERROR: advanceToTargetInTheFollowingCompBlocks(): Impossible, we must be able to find the block"
+      assert(iterBlockIndex >= 0); //"ERROR: advanceToTargetInTheFollowingCompBlocks(): Impossible, we must be able to find the block"
       if(iterBlockIndex < 0){
-		return -1;
+        return -1;
       }
 
       Source src = set->sequenceOfCompBlocks.get(iterBlockIndex).getSource();
@@ -449,7 +448,7 @@ public:
     // Advances to the first beyond the current 
     // whose value is greater than or equal to target.
     // we do linear search inside block because of delta encoding
-    int CompressedSet::Iterator::Advance(int target){	  
+    int CompressedSet::Iterator::Advance(int target){     
      // int doc;
      // while ((doc = nextDoc()) < target) {
      // }
@@ -457,45 +456,45 @@ public:
       
     // if the pointer points past the end
     if(totalDocIdNum <= 0 || cursor == totalDocIdNum){
-	    lastAccessedDocId = NO_MORE_DOCS;
-	    return NO_MORE_DOCS;
+        lastAccessedDocId = NO_MORE_DOCS;
+        return NO_MORE_DOCS;
     }
     // if the pointer points to the end
     if(++cursor == totalDocIdNum){
-	    lastAccessedDocId = NO_MORE_DOCS;
-	    return NO_MORE_DOCS;
-	}
-	// the expected behavior is to find the first element AFTER the current cursor, 
-	// who is equal or larger than target
-	if(target <= lastAccessedDocId) {
-	    target = lastAccessedDocId + 1;
-	}
-	
-	int iterBlockIndex = cursor >> BLOCK_SIZE_BIT; 
-	int offset = cursor & BLOCK_SIZE_MODULO;
-	
-	// if there is noComp block, check noComp block 
+        lastAccessedDocId = NO_MORE_DOCS;
+        return NO_MORE_DOCS;
+    }
+    // the expected behavior is to find the first element AFTER the current cursor, 
+    // who is equal or larger than target
+    if(target <= lastAccessedDocId) {
+        target = lastAccessedDocId + 1;
+    }
+    
+    int iterBlockIndex = cursor >> BLOCK_SIZE_BIT; 
+    int offset = cursor & BLOCK_SIZE_MODULO;
+    
+    // if there is noComp block, check noComp block 
     // the next element is in currently in the last block , or
     // currently not in the last block, but the target is larger than
     // the last element of the last compressed block
-	unsigned int sizeOfCurrentNoCompBlock = set->sizeOfCurrentNoCompBlock;
-	size_t baseListForOnlyCompBlocksSize = set->baseListForOnlyCompBlocks.size();
+    unsigned int sizeOfCurrentNoCompBlock = set->sizeOfCurrentNoCompBlock;
+    size_t baseListForOnlyCompBlocksSize = set->baseListForOnlyCompBlocks.size();
     if(sizeOfCurrentNoCompBlock>0) {// if there exists the last decomp block 
-	  if(iterBlockIndex == compBlockNum || (baseListForOnlyCompBlocksSize>0 && target > set->baseListForOnlyCompBlocks[baseListForOnlyCompBlocksSize-1])) {   
-	    offset = binarySearchForFirstElementEqualOrLargerThanTarget(set->currentNoCompBlock, 0, sizeOfCurrentNoCompBlock-1, target);
+      if(iterBlockIndex == compBlockNum || (baseListForOnlyCompBlocksSize>0 && target > set->baseListForOnlyCompBlocks[baseListForOnlyCompBlocksSize-1])) {   
+        offset = binarySearchForFirstElementEqualOrLargerThanTarget(set->currentNoCompBlock, 0, sizeOfCurrentNoCompBlock-1, target);
    
-	    if(offset>=0){         
-	      iterBlockIndex = compBlockNum;
-	      lastAccessedDocId = set->currentNoCompBlock[offset];            
-	      cursor = (iterBlockIndex << BLOCK_INDEX_SHIFT_BITS) + offset;
-	      return lastAccessedDocId;
-	    } else {
-	      // hy: to avoid the repeated lookup next time once it reaches the end of the sequence
-	      cursor = totalDocIdNum; 
-	      lastAccessedDocId = NO_MORE_DOCS;
-	      return lastAccessedDocId;
-	    }
-	  }
+        if(offset>=0){         
+          iterBlockIndex = compBlockNum;
+          lastAccessedDocId = set->currentNoCompBlock[offset];            
+          cursor = (iterBlockIndex << BLOCK_INDEX_SHIFT_BITS) + offset;
+          return lastAccessedDocId;
+        } else {
+          // hy: to avoid the repeated lookup next time once it reaches the end of the sequence
+          cursor = totalDocIdNum; 
+          lastAccessedDocId = NO_MORE_DOCS;
+          return lastAccessedDocId;
+        }
+      }
     }
     
      // if we cannot not find it in the noComp block, we check the comp blocks
@@ -516,11 +515,11 @@ public:
              offset++;
            }
 
-		   if (offset == DEFAULT_BATCH_SIZE) {
-			printf("Error case 3: Impossible, we must be able to find the target %d in the block, lastAccessedDocId: %d , baseListForOnlyCompBlocks[%d]\n",
-			target,lastAccessedDocId,iterBlockIndex);
+           if (offset == DEFAULT_BATCH_SIZE) {
+            printf("Error case 3: Impossible, we must be able to find the target %d in the block, lastAccessedDocId: %d , baseListForOnlyCompBlocks[%d]\n",
+            target,lastAccessedDocId,iterBlockIndex);
            }
-	       assert(offset != DEFAULT_BATCH_SIZE);
+           assert(offset != DEFAULT_BATCH_SIZE);
        
            cursor = (iterBlockIndex << BLOCK_INDEX_SHIFT_BITS) + offset;    
            return lastAccessedDocId;
