@@ -294,7 +294,7 @@ private:
     }
         
     
-    bool findInDeltaArray(unsigned int array[],size_t size,unsigned int target) {       
+    bool findInDeltaArray(unsigned int array[],size_t size,unsigned int target) const {       
        unsigned int idx;
        unsigned int lastId = array[0];
        if (lastId == target) return true;
