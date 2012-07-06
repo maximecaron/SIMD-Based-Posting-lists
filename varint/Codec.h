@@ -6,10 +6,11 @@
 #include <iostream>
 #include <stdio.h>
 #include <emmintrin.h>
+#include <sys/mman.h>
 class Codec{
 private:
     int    maskOutputSize[256];
-    char*  mask[256];
+    char  mask[256][32];
     char*  scratch_output;
     
     // For all possible values of the
@@ -18,7 +19,6 @@ private:
     void init(){
       for (int desc =0;desc<=255;desc++ ){
         // allocate new mask for this
-        mask[desc] =new char[32]; 
         int bitmask = 0x00000001;
         int bitindex = 0;
         // count number of 0 in the char
@@ -49,11 +49,6 @@ private:
                 k = k + 1;
             }
         }
-
-        //pad the rest with -1
-        for (int i = k; i<16; i++){
-            mask[desc][i]= -1;
-        }
       } 
     
     }
@@ -78,9 +73,6 @@ private:
     
     ~Codec(){
         delete[] scratch_output;
-        for (int desc =0;desc<=255;desc++ ){
-            delete mask[desc];
-        }
     }
     
     size_t block_compressed_length(Source& src){
@@ -104,7 +96,7 @@ private:
         for (int i =0; i < numInt; i++){
             int size = ithSize[i];
             for (int j =0; j < size; j++){
-                written ++;
+                written++;
             }
         }
         return 9;
@@ -128,7 +120,7 @@ private:
 
         while (src.Available() > 0){
             size_t n;
-            const unsigned int* temp = (unsigned int*)src.Peek(&n);
+            const unsigned int* temp = reinterpret_cast<const unsigned int*>(src.Peek(&n));
             int byteNeeded = getNumByteNeeded(*temp);
             
             if (PREDICT_FALSE((length + byteNeeded) > 8)){
@@ -148,8 +140,7 @@ private:
         }
         
         char* dest = dst.GetAppendBuffer(9, scratch_output);
-
-        
+        dest[0] = desc;
         int written = 1;
         for (int i =0; i < numInt; i++){
             int size = ithSize[i];
@@ -159,11 +150,8 @@ private:
                 value = value >> 8;
                 written++;
             }
-            bitmask = bitmask << (ithSize[i]);
-            desc = desc ^ bitmask;
-            bitmask = bitmask << 1;
         }
-        dest[0] = desc;
+
         dst.Append(dest, 9);
         return 9;
     }
@@ -210,43 +198,35 @@ private:
      * dst : a buffer for uncompressed data of size uncompressed_length(src)
      */
     int decodeBlock(Source& src,Sink& dst) const {
-        static char buff[16];
+	static char buff[16];
         size_t n;
         const char*  pdesc = (char*)src.Peek(&n);
         unsigned char desc = *pdesc;
         src.Skip(1);
 
-        const char* peek = (char*)src.Peek(&n);
-        v16qi data;
-        if (PREDICT_TRUE(n >= 16)){
-          // read 16 byte of data only if we need
-          // to avoid cache miss
-          data = __builtin_ia32_lddqu(peek);
-        } else {
-          memcpy(buff,peek,8);
-          data = __builtin_ia32_lddqu(buff);
-        }
-        //detail::groupVarintSSEMasks
-
+        char* peek = (char*)src.Peek(&n);
+		v16qi data;        
+        
         // load de required mask
+        data = __builtin_ia32_lddqu(peek);
         v16qi shf   = __builtin_ia32_lddqu(mask[desc]);
         v16qi result = __builtin_ia32_pshufb128(data,shf);
         char* dest = dst.GetAppendBuffer(32, scratch_output);
         __builtin_ia32_storedqu (dest, result);
-        
-        int readSize = maskOutputSize[desc];
-        if (PREDICT_TRUE( readSize > 4)) {
-          v16qi shf2   = __builtin_ia32_lddqu(mask[desc]+16);
-          v16qi result2 = __builtin_ia32_pshufb128(data,shf2);
-          __builtin_ia32_storedqu (dest + (16), result2);   
-        }
+
+        data = __builtin_ia32_lddqu(peek);
+        shf   = __builtin_ia32_lddqu(mask[desc]+16);
+        result = __builtin_ia32_pshufb128(data,shf);
+        __builtin_ia32_storedqu (dest + (16), result);   
+
         // pop 8 input char
         src.Skip(8);
+        int readSize = maskOutputSize[desc];
         dst.Append(dest, readSize*4);
         return readSize;
     }
 
-    int Uncompress(Source& src, Sink& sink) const {
+    __inline__ int Uncompress(Source& src, Sink& sink) const {
        size_t uncompressSize = 0;
        while (src.Available() > 0){
          uncompressSize += decodeBlock(src,sink);
@@ -254,7 +234,7 @@ private:
        return uncompressSize;
     }
 
-    size_t Uncompress(Source& src, unsigned int* dst,size_t size) const {
+    __inline__ size_t Uncompress(Source& src, unsigned int* dst,size_t size) const {
        Sink decodeDst((char*)dst,sizeof(*dst)*size);
        return Uncompress(src,decodeDst);
     }
@@ -268,8 +248,6 @@ private:
        Sink decodeDst((char*)dst,sizeof(*dst)*dstSize);
        return Uncompress(decodeSrc,decodeDst);
     }
-
-
     
     /**
      * return length of uncompressed output.

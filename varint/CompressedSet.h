@@ -9,8 +9,7 @@
 // should be DEFAULT_BATCH_SIZE -1
 #define  BLOCK_SIZE_MODULO 255
 //int i=-1;
-//for(int x=DEFAULT_BATCH_SIZE; x>0; ++i, x = x>> 1) {  
-//}
+//for(int x=DEFAULT_BATCH_SIZE; x>0; ++i, x = x>> 1) { }
 //BLOCK_INDEX_SHIFT_BITS = i;
 #define BLOCK_INDEX_SHIFT_BITS 8
 
@@ -41,6 +40,7 @@ public:
         int lastAccessedDocId; 
         int compBlockNum; // the number of compressed blocks
         unsigned int*  iterDecompBlock; // temporary storage for the decompressed data
+		unsigned int* currentNoCompBlock;
 
         //parent
         const CompressedSet* set;
@@ -53,19 +53,22 @@ public:
         CompressedSet::Iterator& operator=(const CompressedSet::Iterator& rhs);
         ~Iterator();
     
-        int docID();
-        int nextDoc();
+        __inline__ int docID();
+        __inline__ int nextDoc();
         int Advance(int target);
     };
 private:    
     unsigned int sizeOfCurrentNoCompBlock; // the number of uncompressed elements that is hold in the currentNoCompBlock
     unsigned int lastAdded; // recently inserted/accessed element   
     unsigned int compressedByteSize;    
-    //Two separate arrays containing
-    //the last docID 
-    //and size of each block in words in uncompressed form.
+    // Two separate arrays containing
+    // the last docID 
+    // of each block in words in uncompressed form.
     vector<unsigned int> baseListForOnlyCompBlocks;
     unsigned int* myDecompBlock;
+	const CompressedSet& operator=(const CompressedSet& other);
+
+
 public:
     Codec codec; // varint encoding codec    
     unsigned int totalDocIdNum; // the total number of elemnts that have been inserted/accessed so far  
@@ -74,6 +77,8 @@ public:
     
     
     CompressedSet(const CompressedSet& other){
+	    assert(totalDocIdNum <= 1); // You are trying to copy the bitmap, a terrible idea in general, for performance reasons
+		
         myDecompBlock = new unsigned int[DEFAULT_BATCH_SIZE];
         currentNoCompBlock = new unsigned int[DEFAULT_BATCH_SIZE];
         lastAdded = other.lastAdded;
@@ -81,9 +86,20 @@ public:
         sizeOfCurrentNoCompBlock = other.sizeOfCurrentNoCompBlock;
         totalDocIdNum = other.totalDocIdNum;
         memcpy( myDecompBlock,other.myDecompBlock, sizeof(unsigned int)*DEFAULT_BATCH_SIZE);
-        memcpy( currentNoCompBlock,other.currentNoCompBlock, sizeof(unsigned int)*DEFAULT_BATCH_SIZE );
-        
+        memcpy( currentNoCompBlock,other.currentNoCompBlock, sizeof(unsigned int)*DEFAULT_BATCH_SIZE );	
     }
+
+
+   /**
+    * Swap the content of this bitmap with another bitmap.
+    * No copying is done. (Running time complexity is constant.)
+    */
+
+    void swap(CompressedSet & x){
+	 //todo: implement it 
+     assert(false); 
+    }
+
     
     CompressedSet(){
         myDecompBlock = new unsigned int[DEFAULT_BATCH_SIZE];
@@ -147,9 +163,9 @@ public:
 
     CompressedSet::Iterator iterator() const {
        CompressedSet::Iterator it(this);
-       //it.nextDoc();
        return it;
     }
+
 
     /**
      * Add an array of sorted docIds to the set
@@ -166,8 +182,7 @@ public:
         
          //Add to the list of last element of each block
          baseListForOnlyCompBlocks.push_back(currentNoCompBlock[DEFAULT_BATCH_SIZE-1]);
-         shared_ptr<CompressedDeltaChunk> compRes = PForDeltaCompressCurrentBlock();
-         //compressedByteSize += (*compRes).getCompressedSize();      
+         shared_ptr<CompressedDeltaChunk> compRes = PForDeltaCompressCurrentBlock();      
          sequenceOfCompBlocks.add(compRes);
 
          // the middle blocks (copy all possible full block)
@@ -178,8 +193,7 @@ public:
             memcpy( &currentNoCompBlock[0],&docids[newStart], DEFAULT_BATCH_SIZE*4 );
 
             PForDeltaCompressCurrentBlock();
-            compRes = PForDeltaCompressCurrentBlock();
-            //compressedByteSize += (*compRes).getCompressedSize();      
+            compRes = PForDeltaCompressCurrentBlock();    
             sequenceOfCompBlocks.add(compRes);
             leftLen -= DEFAULT_BATCH_SIZE;
             newStart += DEFAULT_BATCH_SIZE;
@@ -220,6 +234,19 @@ public:
         currentNoCompBlock[0] = docId;  
     }
     totalDocIdNum++;
+  }
+  
+  
+  CompressedSet removeDoc(unsigned int docId){
+	CompressedSet set;
+	CompressedSet::Iterator it = this->iterator();
+	while (it.nextDoc() != NO_MORE_DOCS ){
+		unsigned int val = it.docID();
+		if (val != docId){
+			set.addDoc(val);
+		}	
+	}
+	return set;
   }
 
   void compact(){
@@ -405,7 +432,7 @@ public:
         } else {    // (offset==0) must be in one of the compressed blocks
             Source src = set->sequenceOfCompBlocks.get(iterBlockIndex).getSource();
             size_t uncompSize = set->codec.Uncompress(src,iterDecompBlock,DEFAULT_BATCH_SIZE);
-            lastAccessedDocId = iterDecompBlock[offset];
+            lastAccessedDocId = iterDecompBlock[0];
         }
         return lastAccessedDocId;
     }

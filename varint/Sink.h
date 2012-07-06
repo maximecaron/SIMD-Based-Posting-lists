@@ -39,7 +39,7 @@ public:
     
     
     // Append "bytes[0,n-1]" to this
-    bool Append(const char* data, size_t n) {
+    __inline__ bool Append(const char* data, size_t n) {
       const size_t space_left = limit_ - currBytePtr;   
       if ( space_left < n){
         return false;
@@ -64,7 +64,7 @@ public:
     // pointer returned from this function and the number of bytes
     // written. Many Append() implementations will avoid copying
     // bytes if this function returned an internal buffer.
-    char* GetAppendBuffer(size_t length, char* scratch) {
+    __inline__ char* GetAppendBuffer(size_t length, char* scratch) {
       const size_t space_left = limit_ - currBytePtr;
       if (space_left < length) {
         return  scratch;

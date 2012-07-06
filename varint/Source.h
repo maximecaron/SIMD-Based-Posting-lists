@@ -40,7 +40,7 @@ public:
 
   
     // Return the number of bytes left to read from the source
-    inline size_t Available() const {
+    __inline__ size_t Available() const {
         return left_;
     }
     
@@ -48,7 +48,7 @@ public:
     // return a pointer and size to internal buffer instead of copying to caller buffer.
     // The returned region is valid until the next call to Skip()
     // The caller is responsible for ensuring that it only reads uptop bytes_in_buffer
-    inline const uint8* Peek(size_t* bytes_in_buffer){
+    __inline__ const uint8* Peek(size_t* bytes_in_buffer){
       *bytes_in_buffer = left_;
       return ptr_;
     }
@@ -56,7 +56,7 @@ public:
     // Obtains a chunk of data from the stream.
     // If the returned value is false, there is no more data to return or an error occurred.
     // Otherwise, "size" points to the actual number of bytes read and "data" points to a pointer to a buffer containing these bytes.
-    inline bool Next(const void ** data,size_t * size){
+    __inline__ bool Next(const void ** data,size_t * size){
         if (!left_) return false;
         
         if (left_ <= block_size_){
@@ -74,7 +74,7 @@ public:
     // Returns false if the end of the stream is reached or some input error occurred.
     // In the end-of-stream case, the stream is advanced to the end of the stream
     // (so ByteCount() will return the total size of the stream).
-    inline bool Skip(size_t count){
+    __inline__ bool Skip(size_t count){
       //if (count > left_) return false;
       left_ -= count;
       ptr_ += count;
@@ -82,4 +82,4 @@ public:
     }
 };
 
-#endif  SOURCE_H__
+#endif  // SOURCE_H__
