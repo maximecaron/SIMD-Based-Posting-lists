@@ -214,7 +214,11 @@ private:
        shared_ptr<CompressedDeltaChunk> compblock(new CompressedDeltaChunk(sizeof(*src)*srcSize));
 	   Sink encodeDst = compblock->getSink();
        size_t compressed_size = Compress(encodeSrc,encodeDst);
-	   compblock->resize(compressed_size);
+       
+       // vector.Resize doens't free memory
+       // If you want to resize downwards you'd need to copy from your original vector into a new local temporary vector
+       // and then swap the resulting vector with your original.
+       compblock->resize(compressed_size);
        return compblock;
     }
 };
