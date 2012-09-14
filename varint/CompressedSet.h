@@ -50,6 +50,7 @@ public:
     public:
         Iterator(const CompressedSet* parentSet);
         Iterator(const CompressedSet::Iterator& other);
+        // assignator operator disabled for now
         CompressedSet::Iterator& operator=(const CompressedSet::Iterator& rhs);
         ~Iterator();
     
@@ -59,7 +60,6 @@ public:
     };
 private:    
     unsigned int sizeOfCurrentNoCompBlock; // the number of uncompressed elements that is hold in the currentNoCompBlock
-    unsigned int lastAdded; // recently inserted/accessed element   
     unsigned int compressedByteSize;    
     // Two separate arrays containing
     // the last docID 
@@ -70,6 +70,7 @@ private:
 
 
 public:
+	unsigned int lastAdded; // recently inserted/accessed element   
     Codec codec; // varint encoding codec    
     unsigned int totalDocIdNum; // the total number of elemnts that have been inserted/accessed so far  
     unsigned int* currentNoCompBlock;  // the memory used to store the uncompressed elements. Once the block is full, all its elements are compressed into sequencOfCompBlock and the block is cleared.
@@ -120,19 +121,21 @@ public:
     void write(ostream & out) const {
         out.write((char*)&lastAdded,4);
         out.write((char*)&totalDocIdNum,4);
-            
+               
+
         //write base (skipping info)
-        int baseListForOnlyCompBlocksSize = 1 + baseListForOnlyCompBlocks.size();
+        int baseListForOnlyCompBlocksSize = baseListForOnlyCompBlocks.size();
         out.write((char*)&baseListForOnlyCompBlocksSize,4);
         out.write((char*)&baseListForOnlyCompBlocks[0],baseListForOnlyCompBlocksSize*4);
-        
+	     
+
         //write the last block (uncompressed) 
         out.write((char*)&sizeOfCurrentNoCompBlock,4);
         out.write((char*)&currentNoCompBlock[0],sizeOfCurrentNoCompBlock*4);
         
         //write compressed blocks
         sequenceOfCompBlocks.write(out);
-        out.flush();        
+        out.flush();    
     }
 
     void read(istream & in)  {
@@ -151,14 +154,12 @@ public:
         baseListForOnlyCompBlocks.resize(baseListForOnlyCompBlocksSize);
         in.read((char*)&baseListForOnlyCompBlocks[0],baseListForOnlyCompBlocksSize*4);
 
-
         //read the last block (uncompressed) 
         in.read((char*)&sizeOfCurrentNoCompBlock,4);
         in.read((char*)&currentNoCompBlock[0],sizeOfCurrentNoCompBlock*4);
 
         //write compressed blocks
         sequenceOfCompBlocks.read(in);
-        
     }
 
     CompressedSet::Iterator iterator() const {
@@ -236,7 +237,24 @@ public:
     totalDocIdNum++;
   }
   
-  
+  CompressedSet unorderedAdd(unsigned int docId){
+	CompressedSet set;
+	CompressedSet::Iterator it = this->iterator();
+	bool inserted = false;
+	while (it.nextDoc() != NO_MORE_DOCS ){
+		unsigned int val = it.docID();
+		if (val > docId&& !inserted){
+			inserted = true;
+			set.addDoc(docId);
+		}
+		set.addDoc(val);	
+	}
+	if(!inserted){
+		set.addDoc(docId);
+	}
+	return set;
+  }
+
   CompressedSet removeDoc(unsigned int docId){
 	CompressedSet set;
 	CompressedSet::Iterator it = this->iterator();
@@ -285,14 +303,7 @@ public:
   }
 
   shared_ptr<CompressedDeltaChunk> PForDeltaCompressOneBlock(unsigned int* block,size_t blocksize){
-    size_t compressedBlockSize = codec.compressed_length(block,blocksize);
-    // Allocate one CompressedDeltaChunk of the correct size
-    shared_ptr<CompressedDeltaChunk> compblock = sequenceOfCompBlocks.allocateBlock(compressedBlockSize);
-    // Obtain a sink for this new chunk
-    Sink dst = (*compblock).getSink();
-    Source src(block,blocksize);
-    size_t compressedSize = codec.Compress(src,dst);
-    //assert(compressedSize == compressedBlockSize);
+    shared_ptr<CompressedDeltaChunk> compblock = codec.Compress(block,blocksize);
     return compblock;
   }
 

@@ -6,8 +6,12 @@
 #include <iostream>
 #include <stdio.h>
 #include <emmintrin.h>
+#include <tr1/memory>
 #include <sys/mman.h>
-class Codec{
+#include "CompressedDeltaChunk.h"
+using namespace std::tr1;
+
+class Codec {
 private:
     int    maskOutputSize[256];
     char  mask[256][32];
@@ -75,35 +79,6 @@ private:
         delete[] scratch_output;
     }
     
-    size_t block_compressed_length(Source& src){
-        int length = 0;
-        int numInt = 0;
-        int ithSize[8];
-        while (src.Available() > 0){
-            size_t n;
-            const unsigned int*  temp = (unsigned int*)src.Peek(&n);
-            int byteNeeded = getNumByteNeeded(*temp);
-            if (PREDICT_FALSE(length + byteNeeded > 8)){
-                break; 
-            }
-            ithSize[numInt] = byteNeeded;
-            length += byteNeeded;
-            src.Skip(4);
-            numInt++;
-        }
-        int written = 0;
-        written++;
-        for (int i =0; i < numInt; i++){
-            int size = ithSize[i];
-            for (int j =0; j < size; j++){
-                written++;
-            }
-        }
-        return 9;
-    }
-    
-    
-    
     // input: 
     //   src = stream of integer
     //   dst = stream of char
@@ -121,6 +96,8 @@ private:
         while (src.Available() > 0){
             size_t n;
             const unsigned int* temp = reinterpret_cast<const unsigned int*>(src.Peek(&n));
+
+
             int byteNeeded = getNumByteNeeded(*temp);
             
             if (PREDICT_FALSE((length + byteNeeded) > 8)){
@@ -164,34 +141,6 @@ private:
        }
        return compressed_size;
     }
- 
-    /**
-     * return length of compressed output.
-     */
-    size_t compressed_length(Source& src){
-        size_t compressed_size = 0;
-        while (src.Available() ){
-            size_t temp = block_compressed_length(src);
-            compressed_size +=temp;
-        }
-        return compressed_size; 
-    }
-    
-    template<typename srctype>
-    size_t compressed_length(srctype src,size_t srcSize){
-        Source encodeSrc(src,srcSize);
-        return compressed_length(encodeSrc);    
-    }
-    
-    /**
-     * @return the compressed size in bytes
-     */
-    template<typename srctype, typename dstype>
-    size_t Compress(srctype src, size_t srcSize, dstype dst,size_t dstSize){
-       Source encodeSrc(src,srcSize);
-       Sink encodeDst((char*)dst,sizeof(*dst)*dstSize);
-       return Compress(encodeSrc,encodeDst);
-    }
 
     /**
      * src : a compressed buffer
@@ -233,45 +182,10 @@ private:
        }
        return uncompressSize;
     }
-
-    __inline__ size_t Uncompress(Source& src, unsigned int* dst,size_t size) const {
-       Sink decodeDst((char*)dst,sizeof(*dst)*size);
-       return Uncompress(src,decodeDst);
-    }
-
-    /**
-     * @return the uncompressed size in bytes
-     */
-    template<typename srctype, typename dstype>
-    size_t Uncompress(srctype src,size_t srcSize, dstype dst,size_t dstSize){
-       Source decodeSrc(src,srcSize);
-       Sink decodeDst((char*)dst,sizeof(*dst)*dstSize);
-       return Uncompress(decodeSrc,decodeDst);
-    }
-    
-    /**
-     * return length of uncompressed output.
-     */
-    size_t uncompressed_length(Source src){
-        size_t size = 0;
-        size_t avail = 0;
-        const char*  desc = (char*)src.Peek(&avail);
-        while (avail >= 9){
-             size_t readSize = maskOutputSize[*desc];
-             size +=  readSize;
-             desc +=9;
-             avail -= 9;
-        }
-        return size;
-    }
-    
-    template<typename srctype>
-    size_t uncompressed_length(srctype src,size_t srcSize){
-        Source decodeSrc(src,srcSize);
-        return uncompressed_length(decodeSrc);
-    }
         
-    
+   
+    //Code below is part of the public interface
+
     bool findInDeltaArray(unsigned int array[],size_t size,unsigned int target) const {       
        unsigned int idx;
        unsigned int lastId = array[0];
@@ -284,6 +198,24 @@ private:
             return (lastId == target);
        }
        return false;
+    }
+
+    __inline__ size_t Uncompress(Source& src, unsigned int* dst,size_t size) const {
+       Sink decodeDst((char*)dst,sizeof(*dst)*size);
+       return Uncompress(src,decodeDst);
+    }
+
+    /**
+     * @return the compressed size in bytes
+     */
+    template<typename srctype>
+    shared_ptr<CompressedDeltaChunk> Compress(srctype src, size_t srcSize){
+       Source encodeSrc(src,srcSize);
+       shared_ptr<CompressedDeltaChunk> compblock(new CompressedDeltaChunk(sizeof(*src)*srcSize));
+	   Sink encodeDst = compblock->getSink();
+       size_t compressed_size = Compress(encodeSrc,encodeDst);
+	   compblock->resize(compressed_size);
+       return compblock;
     }
 };
 
