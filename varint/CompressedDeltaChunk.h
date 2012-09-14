@@ -27,9 +27,18 @@ public:
         in.read((char*)&(data_[0]),compressedSize_);
         
     }
+
+    void shrinkContainer(vector<uint8> &container) {
+      if (container.size() != container.capacity()) {
+        vector<uint8> tmp = container;
+        swap(container, tmp);
+      }
+    }
+
     void resize(size_t newsize){
 		data_.resize(newsize);
 		compressedSize_ = newsize;
+		shrinkContainer(data_);
     }
     vector<uint8>& getVector(){
 		return data_;
