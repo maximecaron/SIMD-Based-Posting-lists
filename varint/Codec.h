@@ -182,6 +182,14 @@ private:
        }
        return uncompressSize;
     }
+    
+    template<typename C>
+    void shrinkContainer(C &container) {
+      if (container.size() != container.capacity()) {
+        C tmp = container;
+        swap(container, tmp);
+      }
+    }
         
    
     //Code below is part of the public interface
