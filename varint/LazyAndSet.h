@@ -1,13 +1,13 @@
 #ifndef LAZY_AND_SET_H__
 #define LAZY_AND_SET_H__
 #include <vector>
-#include "CompressedSet.h"
+#include "Set.h"
 class LazyAndSet;
 
 class LazyAndSetIterator {
 private:
 	int lastReturn; 
-	vector<CompressedSet::Iterator> iterators;
+	vector<shared_ptr<Set::Iterator> > iterators;
 	const LazyAndSet& set;
 public:
 	LazyAndSetIterator(const LazyAndSet* parent);
@@ -18,16 +18,16 @@ public:
 
 class LazyAndSet {
  public:
-	vector<shared_ptr<CompressedSet> > sets_;
+	vector<shared_ptr<Set> > sets_;
 	int nonNullSize;
 	int setSize;
 	LazyAndSet(){
-		sets_ = vector<shared_ptr<CompressedSet> >();
+		sets_ = vector<shared_ptr<Set> >();
 		nonNullSize = 0;
 		setSize = -1;
 	}
 	
-	LazyAndSet(vector<shared_ptr<CompressedSet> >& sets){
+	LazyAndSet(vector<shared_ptr<Set> >& sets){
 		sets_ = sets;
         nonNullSize = sets.size();
         setSize = -1;
@@ -62,9 +62,9 @@ LazyAndSetIterator::LazyAndSetIterator(const LazyAndSet* parent) : set(*parent){
 	if (set.nonNullSize < 1)
 	    throw string("Minimum one iterator required");
 	
-	for (vector<shared_ptr<CompressedSet> >::const_iterator it = set.sets_.begin(); it!=set.sets_.end(); it++){
-		shared_ptr<CompressedSet> set  = *it;
-		CompressedSet::Iterator dcit = set->iterator();
+	for (vector<shared_ptr<Set> >::const_iterator it = set.sets_.begin(); it!=set.sets_.end(); it++){
+		shared_ptr<Set> set  = *it;
+		shared_ptr<Set::Iterator>  dcit = set->iterator();
 		iterators.push_back(dcit);
 	}
 	lastReturn = (iterators.size() > 0 ? -1 : NO_MORE_DOCS);
@@ -79,7 +79,7 @@ int LazyAndSetIterator::nextDoc() {
     if (lastReturn == NO_MORE_DOCS) 
        return NO_MORE_DOCS;    
     
-    CompressedSet::Iterator* dcit = &iterators[0];
+    shared_ptr<Set::Iterator> dcit = iterators[0];
     int target = dcit->nextDoc();
 
     // shortcut: if it reaches the end of the shortest list, do not scan other lists
@@ -94,7 +94,7 @@ int LazyAndSetIterator::nextDoc() {
     // i is ith iterator
     while (i < size) {
       if (i != skip) {
-        dcit = &iterators[i];
+        dcit = iterators[i];
         int docId = dcit->Advance(target);
        
         // once we reach the end of one of the blocks, we return NO_MORE_DOCS
@@ -124,7 +124,7 @@ int LazyAndSetIterator::Advance(int target) {
      if (lastReturn == NO_MORE_DOCS) 
         return NO_MORE_DOCS;
     
-     CompressedSet::Iterator* dcit = &iterators[0];
+      shared_ptr<Set::Iterator> dcit = iterators[0];
      target = dcit->Advance(target);
      if(target == NO_MORE_DOCS) { 
        return (lastReturn = target);
@@ -135,7 +135,7 @@ int LazyAndSetIterator::Advance(int target) {
      int i = 1;
      while (i < size) {
        if (i != skip) {
-         dcit = &iterators[i];
+         dcit = iterators[i];
          int docId = dcit->Advance(target);
          if(docId == NO_MORE_DOCS) {
            return (lastReturn = docId);
