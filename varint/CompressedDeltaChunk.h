@@ -4,11 +4,12 @@
 #include "Common.h"
 #include "Sink.h"
 #include "Source.h"
+#include "memutil.h"
 class CompressedDeltaChunk {
 private:
-    size_t compressedSize_;
-    vector<uint8> data_;
     
+    vector<uint8,cacheallocator> data_;
+    size_t compressedSize_;
     //disable copy constructor
     CompressedDeltaChunk(const CompressedDeltaChunk& other);
     CompressedDeltaChunk& operator=(const CompressedDeltaChunk& other);
@@ -28,19 +29,16 @@ public:
         
     }
 
-    void shrinkContainer(vector<uint8> &container) {
-      if (container.size() != container.capacity()) {
-        vector<uint8> tmp = container;
-        swap(container, tmp);
-      }
-    }
+
 
     void resize(size_t newsize){
-		data_.resize(newsize);
 		compressedSize_ = newsize;
-		shrinkContainer(data_);
+		data_.resize(newsize);
+	    vector<uint8,cacheallocator> tmp(data_);
+	    swap(data_, tmp);
     }
-    vector<uint8>& getVector(){
+
+    vector<uint8,cacheallocator>& getVector(){
 		return data_;
     }
 

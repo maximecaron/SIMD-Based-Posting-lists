@@ -2,20 +2,20 @@
 #ifndef COMPRESSED_SET_H__
 #define COMPRESSED_SET_H__
 
-#define  BLOCK_SIZE_BIT 8
+#define  BLOCK_SIZE_BIT 11
 // should be a 2 ^ BLOCK_SIZE_BIT
 // 256 should give good cache alignement
-#define  DEFAULT_BATCH_SIZE 256
+#define  DEFAULT_BATCH_SIZE 2048
 // should be DEFAULT_BATCH_SIZE -1
-#define  BLOCK_SIZE_MODULO 255
+#define  BLOCK_SIZE_MODULO 2047
 //int i=-1;
 //for(int x=DEFAULT_BATCH_SIZE; x>0; ++i, x = x>> 1) { }
 //BLOCK_INDEX_SHIFT_BITS = i;
-#define BLOCK_INDEX_SHIFT_BITS 8
+#define BLOCK_INDEX_SHIFT_BITS 11
 
 #include <iostream>
 #include <stdio.h>
-#include <limits>
+
 #include <assert.h>
 #include "Common.h"
 #include "Set.h"
@@ -25,19 +25,20 @@
 #include "Source.h"
 #include "Sink.h"
 #include <vector>
-#include <tr1/memory>
+#include <memory>
 #include "CollectionHelper.h"
 
-using namespace std::tr1;
+using namespace std;
 const int NO_MORE_DOCS = std::numeric_limits<int>::max();
 class CompressedSet;
 
-class CompressedSet  {
+class CompressedSet : public Set {
 public:
-    class Iterator {
+    class Iterator : public Set::Iterator {
+	    int lastAccessedDocId; 
         int cursor; // the current pointer of the input 
         unsigned int totalDocIdNum;
-        int lastAccessedDocId; 
+       
         int compBlockNum; // the number of compressed blocks
         unsigned int*  iterDecompBlock; // temporary storage for the decompressed data
 		unsigned int* currentNoCompBlock;
@@ -162,8 +163,8 @@ public:
         sequenceOfCompBlocks.read(in);
     }
 
-    CompressedSet::Iterator iterator() const {
-       CompressedSet::Iterator it(this);
+    shared_ptr<Set::Iterator>  iterator() const {
+	   shared_ptr<Set::Iterator> it( new CompressedSet::Iterator(this));
        return it;
     }
 
@@ -239,11 +240,11 @@ public:
   
   CompressedSet unorderedAdd(unsigned int docId){
 	CompressedSet set;
-	CompressedSet::Iterator it = this->iterator();
+	CompressedSet::Iterator it(this);
 	bool inserted = false;
 	while (it.nextDoc() != NO_MORE_DOCS ){
 		unsigned int val = it.docID();
-		if (val > docId&& !inserted){
+		if (val > docId && !inserted){
 			inserted = true;
 			set.addDoc(docId);
 		}
@@ -257,7 +258,7 @@ public:
 
   CompressedSet removeDoc(unsigned int docId){
 	CompressedSet set;
-	CompressedSet::Iterator it = this->iterator();
+	CompressedSet::Iterator it(this);
 	while (it.nextDoc() != NO_MORE_DOCS ){
 		unsigned int val = it.docID();
 		if (val != docId){
@@ -267,10 +268,18 @@ public:
 	return set;
   }
 
+  void compactBaseListForOnlyCompBlocks(){
+	if (baseListForOnlyCompBlocks.size() != baseListForOnlyCompBlocks.capacity()) {
+        vector<unsigned int> tmp(baseListForOnlyCompBlocks);
+        std::swap(baseListForOnlyCompBlocks, tmp);
+    }
+
+  }
+
   void compact(){
     sequenceOfCompBlocks.compact();
-    baseListForOnlyCompBlocks.resize(baseListForOnlyCompBlocks.size());
-  }
+	compactBaseListForOnlyCompBlocks();
+ }
 
 
   void initSet(){
@@ -298,9 +307,10 @@ public:
   {
     for(int i=size-1; i>0; --i)
     {
-      block[i] = block[i] - block[i-1] - 1; 
+      block[i] -= block[i-1] - 1; 
     }
   }
+
 
   shared_ptr<CompressedDeltaChunk> PForDeltaCompressOneBlock(unsigned int* block,size_t blocksize){
     shared_ptr<CompressedDeltaChunk> compblock = codec.Compress(block,blocksize);
@@ -365,9 +375,7 @@ public:
       }
 };
 
-   // Returns an iterator that can be used to access the position of the
-   // set bits. The running time complexity of a full scan is proportional to the number
-   // of set bits
+
    CompressedSet::Iterator::Iterator(const CompressedSet* const parentSet) {
         set = parentSet;
         compBlockNum = set->sequenceOfCompBlocks.size();
@@ -432,18 +440,21 @@ public:
         //: if the pointer points to the end
         if(PREDICT_FALSE(++cursor == totalDocIdNum)) { 
           lastAccessedDocId = NO_MORE_DOCS;
-          return lastAccessedDocId;
-        }
-        int iterBlockIndex = cursor >> BLOCK_SIZE_BIT; 
-        int offset = cursor & BLOCK_SIZE_MODULO;
-        if(iterBlockIndex == compBlockNum) { 
-            lastAccessedDocId = set->currentNoCompBlock[offset];
-        } else if (PREDICT_TRUE(offset)){ 
-            lastAccessedDocId += (iterDecompBlock[offset]+1);
-        } else {    // (offset==0) must be in one of the compressed blocks
-            Source src = set->sequenceOfCompBlocks.get(iterBlockIndex).getSource();
-            size_t uncompSize = set->codec.Uncompress(src,iterDecompBlock,DEFAULT_BATCH_SIZE);
-            lastAccessedDocId = iterDecompBlock[0];
+        }else{
+         int iterBlockIndex = cursor >> BLOCK_SIZE_BIT; 
+         int offset = cursor & BLOCK_SIZE_MODULO;
+         if( iterBlockIndex == compBlockNum  ) { 
+             lastAccessedDocId = set->currentNoCompBlock[offset];
+         } else
+         if (PREDICT_TRUE(offset)){ 
+	        //lastAccessedDocId = iterDecompBlock[offset];
+             lastAccessedDocId += (iterDecompBlock[offset]+1);
+         } else {
+	        // (offset==0) must be in one of the compressed blocks
+             Source src = set->sequenceOfCompBlocks.get(iterBlockIndex).getSource();
+             size_t uncompSize = set->codec.Uncompress(src,iterDecompBlock,DEFAULT_BATCH_SIZE);
+             lastAccessedDocId = iterDecompBlock[0];
+         }
         }
         return lastAccessedDocId;
     }

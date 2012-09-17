@@ -2,10 +2,10 @@
 #define  DELTA_CHUNK_STORE_H__
 #include <vector>
 #include <iostream>
-#include <tr1/unordered_map>
-#include <tr1/memory>
+#include <unordered_map>
+#include <memory>
 #include "CompressedDeltaChunk.h"
-using namespace std::tr1;
+using namespace std;
 
 class DeltaChunkStore {
   vector<shared_ptr<CompressedDeltaChunk> > data2;
@@ -27,7 +27,10 @@ public:
   }
 
   void compact(){
-    data2.resize(data2.size());
+	if (data2.size() != data2.capacity()) {
+        vector<shared_ptr<CompressedDeltaChunk> > tmp = data2;
+        swap(data2, tmp);
+    }
   }
 
   size_t size() const {
