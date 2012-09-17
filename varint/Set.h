@@ -1,3 +1,5 @@
+#ifndef ABSTRACT_SET_H__
+#define ABSTRACT_SET_H__
 class Set {
 public:
 	class Iterator {
@@ -16,3 +18,4 @@ public:
 	//Number of docIds in the set
 	virtual bool find(unsigned int target) const = 0;
 };
+#endif  // ABSTRACT_SET_H__
