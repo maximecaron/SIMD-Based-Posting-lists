@@ -5,7 +5,7 @@ public:
 	class Iterator {
 		public:
 		virtual int docID() = 0;
-		virtual int getBlockIndex(int docIdIndex) = 0;
+
 		virtual int nextDoc() = 0;
 		virtual int Advance(int target) = 0;
 	};

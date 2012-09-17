@@ -4,7 +4,7 @@
 #include "Set.h"
 class LazyAndSet;
 
-class LazyAndSetIterator {
+class LazyAndSetIterator : Set::Iterator {
 private:
 	int lastReturn; 
 	vector<shared_ptr<Set::Iterator> > iterators;
@@ -16,7 +16,7 @@ public:
 	int Advance(int target);
 };
 
-class LazyAndSet {
+class LazyAndSet : Set {
  public:
 	vector<shared_ptr<Set> > sets_;
 	int nonNullSize;
