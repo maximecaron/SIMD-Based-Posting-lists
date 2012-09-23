@@ -4,7 +4,7 @@
 #include "Common.h"
 #include "Sink.h"
 #include "Source.h"
-#include "memutil.h"
+#include "bitpacking/memutil.h"
 class CompressedDeltaChunk {
 private:
     
