@@ -3,7 +3,7 @@ Based on   http://www.stepanovpapers.com/CIKM_2011.pdf
 and http://www.adms-conf.org/p1-SCHLEGEL.pdf
     http://pharm.ece.wisc.edu/papers/ispass2011-shi.pdf
 
-to compile use g++ -O2 -mssse3 main.cpp
+to compile use g++ -O2 -mssse3 ./tests/main.cpp
 
 Effectively compressing sorted integer arrays and performing highly efficient operations on the compressed arrays.
 Operation include : 

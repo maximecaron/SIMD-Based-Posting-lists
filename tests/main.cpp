@@ -5,9 +5,9 @@ using namespace std;
 #include <iostream>
 #include <stdio.h>
 #include <assert.h>
-#include "varint/CompressedSet.h"
+#include "../src/varint/CompressedSet.h"
 #include <time.h>
-#include "varint/LazyAndSet.h"
+#include "../src/varint/LazyAndSet.h"
 #include <vector>
 
 double diffclock(clock_t clock1,clock_t clock2)
